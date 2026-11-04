@@ -1,137 +1,69 @@
-{
- "_說明": "想讓自動更新也涵蓋你持有的其他標的，就在 symbols 裡照格式加一行。",
- "symbols": [
-  {
-   "market": "台股",
-   "symbol": "2330"
-  },
-  {
-   "market": "台股",
-   "symbol": "2317"
-  },
-  {
-   "market": "台股",
-   "symbol": "2454"
-  },
-  {
-   "market": "台股",
-   "symbol": "0050"
-  },
-  {
-   "market": "台股",
-   "symbol": "2881"
-  },
-  {
-   "market": "台股",
-   "symbol": "2882"
-  },
-  {
-   "market": "台股",
-   "symbol": "2891"
-  },
-  {
-   "market": "台股",
-   "symbol": "2603"
-  },
-  {
-   "market": "台股",
-   "symbol": "2412"
-  },
-  {
-   "market": "台股",
-   "symbol": "2308"
-  },
-  {
-   "market": "台股",
-   "symbol": "2303"
-  },
-  {
-   "market": "台股",
-   "symbol": "0056"
-  },
-  {
-   "market": "台股",
-   "symbol": "00878"
-  },
-  {
-   "market": "台股",
-   "symbol": "1301"
-  },
-  {
-   "market": "美股",
-   "symbol": "AAPL"
-  },
-  {
-   "market": "美股",
-   "symbol": "NVDA"
-  },
-  {
-   "market": "美股",
-   "symbol": "MSFT"
-  },
-  {
-   "market": "美股",
-   "symbol": "TSLA"
-  },
-  {
-   "market": "美股",
-   "symbol": "GOOGL"
-  },
-  {
-   "market": "美股",
-   "symbol": "AMZN"
-  },
-  {
-   "market": "美股",
-   "symbol": "META"
-  },
-  {
-   "market": "美股",
-   "symbol": "AMD"
-  },
-  {
-   "market": "美股",
-   "symbol": "TSM"
-  },
-  {
-   "market": "美股",
-   "symbol": "VOO"
-  },
-  {
-   "market": "美股",
-   "symbol": "QQQ"
-  },
-  {
-   "market": "美股",
-   "symbol": "SPY"
-  },
-  {
-   "market": "加密貨幣",
-   "symbol": "BTC"
-  },
-  {
-   "market": "加密貨幣",
-   "symbol": "ETH"
-  },
-  {
-   "market": "加密貨幣",
-   "symbol": "SOL"
-  },
-  {
-   "market": "加密貨幣",
-   "symbol": "BNB"
-  },
-  {
-   "market": "加密貨幣",
-   "symbol": "XRP"
-  },
-  {
-   "market": "加密貨幣",
-   "symbol": "DOGE"
-  },
-  {
-   "market": "加密貨幣",
-   "symbol": "ADA"
-  }
- ]
-}
+[
+  { "market": "台股", "symbol": "2330", "name": "台積電" },
+  { "market": "台股", "symbol": "2317", "name": "鴻海" },
+  { "market": "台股", "symbol": "2454", "name": "聯發科" },
+  { "market": "台股", "symbol": "2303", "name": "聯電" },
+  { "market": "台股", "symbol": "3711", "name": "日月光投控" },
+  { "market": "台股", "symbol": "6770", "name": "力積電" },
+  { "market": "台股", "symbol": "2408", "name": "南亞科" },
+  { "market": "台股", "symbol": "2337", "name": "旺宏" },
+  { "market": "台股", "symbol": "5347", "name": "世界先進", "board": "上櫃" },
+  { "market": "台股", "symbol": "6488", "name": "環球晶", "board": "上櫃" },
+  { "market": "台股", "symbol": "2308", "name": "台達電" },
+  { "market": "台股", "symbol": "2382", "name": "廣達" },
+  { "market": "台股", "symbol": "3231", "name": "緯創" },
+  { "market": "台股", "symbol": "2356", "name": "英業達" },
+  { "market": "台股", "symbol": "2376", "name": "技嘉" },
+  { "market": "台股", "symbol": "2377", "name": "微星" },
+  { "market": "台股", "symbol": "2357", "name": "華碩" },
+  { "market": "台股", "symbol": "3008", "name": "大立光" },
+  { "market": "台股", "symbol": "8069", "name": "元太", "board": "上櫃" },
+  { "market": "台股", "symbol": "2327", "name": "國巨" },
+  { "market": "台股", "symbol": "2301", "name": "光寶科" },
+  { "market": "台股", "symbol": "3037", "name": "欣興" },
+  { "market": "台股", "symbol": "2368", "name": "金像電" },
+  { "market": "台股", "symbol": "2412", "name": "中華電" },
+  { "market": "台股", "symbol": "3045", "name": "台灣大" },
+  { "market": "台股", "symbol": "4904", "name": "遠傳" },
+  { "market": "台股", "symbol": "2881", "name": "富邦金" },
+  { "market": "台股", "symbol": "2882", "name": "國泰金" },
+  { "market": "台股", "symbol": "2891", "name": "中信金" },
+  { "market": "台股", "symbol": "2884", "name": "玉山金" },
+  { "market": "台股", "symbol": "2892", "name": "第一金" },
+  { "market": "台股", "symbol": "2603", "name": "長榮" },
+  { "market": "台股", "symbol": "2609", "name": "陽明" },
+  { "market": "台股", "symbol": "2618", "name": "長榮航" },
+  { "market": "台股", "symbol": "1301", "name": "台塑" },
+  { "market": "台股", "symbol": "2002", "name": "中鋼" },
+  { "market": "台股", "symbol": "1216", "name": "統一" },
+  { "market": "台股", "symbol": "0050", "name": "元大台灣50" },
+  { "market": "台股", "symbol": "006208", "name": "富邦台50" },
+  { "market": "台股", "symbol": "0056", "name": "元大高股息" },
+  { "market": "台股", "symbol": "00878", "name": "國泰永續高股息" },
+  { "market": "台股", "symbol": "00919", "name": "群益台灣精選高息" },
+  { "market": "台股", "symbol": "00929", "name": "復華台灣科技優息" },
+  { "market": "台股", "symbol": "00940", "name": "元大台灣價值高息" },
+  { "market": "台股", "symbol": "00713", "name": "元大台灣高息低波" },
+  { "market": "台股", "symbol": "00881", "name": "國泰台灣5G+" },
+  { "market": "台股", "symbol": "0052", "name": "富邦科技" },
+  { "market": "美股", "symbol": "AAPL", "name": "蘋果" },
+  { "market": "美股", "symbol": "NVDA", "name": "輝達" },
+  { "market": "美股", "symbol": "MSFT", "name": "微軟" },
+  { "market": "美股", "symbol": "TSLA", "name": "特斯拉" },
+  { "market": "美股", "symbol": "GOOGL", "name": "Google" },
+  { "market": "美股", "symbol": "AMZN", "name": "亞馬遜" },
+  { "market": "美股", "symbol": "META", "name": "Meta" },
+  { "market": "美股", "symbol": "AMD", "name": "超微" },
+  { "market": "美股", "symbol": "TSM", "name": "台積電 ADR" },
+  { "market": "美股", "symbol": "VOO", "name": "Vanguard S&P 500" },
+  { "market": "美股", "symbol": "QQQ", "name": "納斯達克100 ETF" },
+  { "market": "美股", "symbol": "SPY", "name": "標普500 ETF" },
+  { "market": "加密貨幣", "symbol": "BTC", "name": "比特幣" },
+  { "market": "加密貨幣", "symbol": "ETH", "name": "以太幣" },
+  { "market": "加密貨幣", "symbol": "SOL", "name": "Solana" },
+  { "market": "加密貨幣", "symbol": "BNB", "name": "幣安幣" },
+  { "market": "加密貨幣", "symbol": "XRP", "name": "瑞波幣" },
+  { "market": "加密貨幣", "symbol": "DOGE", "name": "狗狗幣" },
+  { "market": "加密貨幣", "symbol": "ADA", "name": "艾達幣" },
+  { "market": "指數", "symbol": "^TWII", "name": "加權指數" }
+]

@@ -1,17 +1,16 @@
 {
-  "name": "我的投資助手",
+  "name": "投資助手",
   "short_name": "投資助手",
-  "description": "台股、美股與加密貨幣的投資管理工具",
-  "lang": "zh-Hant-TW",
+  "description": "台股看盤投資助手：自選股、投資組合、市場分析、技術指標、雲端同步（純前端 PWA）",
+  "lang": "zh-TW",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#0e1319",
-  "theme_color": "#0e1319",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
   "icons": [
     { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
   ]
 }

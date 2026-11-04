@@ -1,4 +1,5 @@
-// 持股計算：交易紀錄 → 持股部位（加權平均成本法）。純函式，不碰 DOM / localStorage。
+// portfolio.js — 持股計算（純函式，不碰 DOM / localStorage）。加權平均成本法。
+// 多組合支援：assets 帶 portfolioId，toHoldings 全部算出後由 view 依組合過濾。
 
 export const MARKETS = ["台股", "美股", "加密貨幣"];
 export const currencyOf = (market) => (market === "台股" ? "TWD" : "USD");
@@ -48,11 +49,11 @@ export function holdingStats(h, quote, fx) {
   return { price, hasQuote, cost, value, pnl, ret: cost ? (pnl / cost) * 100 : 0, realized: toTWD(h.currency, h.realized, fx) };
 }
 
-export function portfolioStats(holdings, quoteOf, fx) {
-  const rows = holdings.filter((h) => h.shares > 0).map((h) => holdingStats(h, quoteOf(h), fx));
+export function portfolioStats(holdingsArr, quoteOf, fx) {
+  const rows = holdingsArr.filter((h) => h.shares > 0).map((h) => holdingStats(h, quoteOf(h), fx));
   const cost = rows.reduce((s, r) => s + r.cost, 0);
   const value = rows.reduce((s, r) => s + r.value, 0);
   const pnl = value - cost;
-  const realized = holdings.reduce((s, h) => s + toTWD(h.currency, h.realized, fx), 0);
+  const realized = holdingsArr.reduce((s, h) => s + toTWD(h.currency, h.realized, fx), 0);
   return { cost, value, pnl, ret: cost ? (pnl / cost) * 100 : 0, realized, missing: rows.filter((r) => !r.hasQuote).length };
 }

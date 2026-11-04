@@ -9,13 +9,14 @@
 html { -webkit-text-size-adjust: 100%; }
 body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.5 var(--sans); }
 button, input, select, textarea { font: inherit; color: inherit; }
+a { color: inherit; }
 .num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
 .up { color: var(--up); } .down { color: var(--down); } .muted { color: var(--muted); } .warn { color: var(--warn); }
 .hidden { display: none !important; }
 
 /* 版面：手機底部分頁列、桌面左側欄 */
 #app { min-height: 100vh; min-height: 100dvh; }
-nav.tabs { position: fixed; bottom: 0; left: 0; right: 0; z-index: 30; display: grid; grid-template-columns: repeat(6, 1fr); background: #11171e; border-top: 1px solid var(--border); padding-bottom: env(safe-area-inset-bottom); }
+nav.tabs { position: fixed; bottom: 0; left: 0; right: 0; z-index: 30; display: grid; grid-template-columns: repeat(5, 1fr); background: #11171e; border-top: 1px solid var(--border); padding-bottom: env(safe-area-inset-bottom); }
 nav.tabs a { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; height: var(--nav-h); color: var(--muted); text-decoration: none; font-size: 11px; }
 nav.tabs a svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 nav.tabs a.active { color: var(--primary); }
@@ -38,6 +39,7 @@ h1 { font-size: 22px; margin: 4px 0 2px; } h2 { font-size: 16px; margin: 0 0 10p
 @media (min-width: 820px) { .g4 { grid-template-columns: repeat(4, 1fr); } .g5 { grid-template-columns: repeat(5, 1fr); } .split { grid-template-columns: 1.6fr 1fr; } .g3 { grid-template-columns: repeat(3, 1fr); } }
 .stat .label { color: var(--muted); font-size: 12.5px; } .stat .value { font-size: clamp(15px, 4.3vw, 19px); font-weight: 700; margin-top: 4px; white-space: nowrap; }
 .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.row.between { justify-content: space-between; }
 .list > .item { padding: 11px 0; border-bottom: 1px solid var(--border); } .list > .item:last-child { border-bottom: 0; padding-bottom: 0; } .list > .item:first-child { padding-top: 0; }
 .right { text-align: right; } .small { font-size: 12.5px; }
 .badge { display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 99px; background: var(--card2); color: var(--muted); border: 1px solid var(--border); vertical-align: middle; }
@@ -79,3 +81,111 @@ ul.bul { margin: 6px 0 0; padding-left: 18px; } ul.bul li { margin: 4px 0; }
 .err-text { color: var(--up); font-size: 13px; margin-top: 8px; min-height: 18px; }
 #toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(var(--nav-h) + 18px + env(safe-area-inset-bottom)); background: #223; border: 1px solid var(--border); padding: 9px 16px; border-radius: 99px; z-index: 60; font-size: 14px; }
 @media (min-width: 820px) { #toast { bottom: 24px; } }
+
+/* ── 首頁：指數英雄卡 ── */
+.hero { margin-bottom: 12px; }
+.index-cards { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+@media (min-width: 820px) { .index-cards { grid-template-columns: repeat(4, 1fr); } }
+.idx-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; cursor: pointer; }
+.idx-card .num { font-size: clamp(17px, 4.6vw, 22px); font-weight: 700; margin: 4px 0; }
+.idx-card .h2 { font-size: 13.5px; font-weight: 600; margin: 0; }
+
+/* ── chips 快速標籤 ── */
+.chips { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 12px; scrollbar-width: none; }
+.chips::-webkit-scrollbar { display: none; }
+.chip { flex: 1; min-width: 108px; background: var(--card2); border: 1px solid var(--border); border-radius: 10px; padding: 8px 12px; text-decoration: none; }
+.chip .h2 { font-size: 14px; font-weight: 600; margin: 0; }
+
+/* ── 功能入口網格 ── */
+.entry-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+@media (min-width: 820px) { .entry-grid { grid-template-columns: repeat(5, 1fr); } }
+.entry { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 8px; text-align: center; text-decoration: none; cursor: pointer; }
+.entry .h1 { font-size: 22px; margin: 0 0 6px; } .entry .h2 { font-size: 13px; margin: 0 0 4px; } .entry .small { line-height: 1.4; }
+
+/* ── 貪婪指數圓環 ── */
+.gauge-wrap { display: flex; align-items: center; gap: 16px; }
+.gauge-ring { width: 128px; height: 128px; border-radius: 50%; position: relative; flex: none; }
+.gauge-ring::after { content: ""; position: absolute; inset: 12px; background: var(--card); border-radius: 50%; }
+.gauge-num { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 1; }
+.gauge-num .num { font-size: 26px; font-weight: 700; }
+.gauge-num .small { color: var(--muted); }
+
+/* ── KPI 小卡 ── */
+.kpi-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin: 10px 0; }
+.kpi-grid .card { margin: 0; padding: 10px 12px; }
+.kpi-grid .num { font-size: 16px; font-weight: 700; margin-top: 2px; }
+
+/* ── 迷你表格 ── */
+.mini-tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+.mini-tbl th { color: var(--muted); font-weight: 500; text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border); }
+.mini-tbl td { padding: 7px 8px; border-bottom: 1px solid var(--border); }
+.mini-tbl tr:last-child td { border-bottom: 0; }
+.mini-tbl td.num, .mini-tbl th.num { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+/* ── 登入／雲端 ── */
+.cloudchip { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--muted); border: 1px solid var(--border); border-radius: 99px; padding: 2px 10px; margin-left: 8px; cursor: pointer; background: var(--card2); vertical-align: middle; }
+.cloudchip.on { color: var(--primary); border-color: #1f6f5f; }
+.provider-btn { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; margin: 6px 0; }
+.provider-btn .g { width: 20px; height: 20px; border-radius: 50%; }
+.step { display: flex; gap: 10px; margin: 10px 0; }
+.step .n { flex: none; width: 24px; height: 24px; border-radius: 50%; background: var(--card2); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: var(--primary); }
+.step .body { flex: 1; min-width: 0; }
+.step .body .h2 { margin: 0 0 4px; font-size: 14.5px; }
+.mono { font-family: var(--mono); font-size: 12px; word-break: break-all; }
+
+/* ── 對話（AI 規則式） ── */
+.chat-log { display: flex; flex-direction: column; gap: 8px; margin: 10px 0; max-height: 40vh; overflow-y: auto; }
+.msg { padding: 9px 12px; border-radius: 12px; font-size: 14px; white-space: pre-wrap; }
+.msg.user { background: #0f5c4c; align-self: flex-end; max-width: 85%; }
+.msg.bot { background: var(--card2); border: 1px solid var(--border); align-self: flex-start; max-width: 92%; }
+
+/* ── 警報 / 通知清單用的小紅點 ── */
+.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--up); margin-left: 6px; }
+
+/* ============================================================
+   v2 覆寫與補齊（新架構：扁平化、5 頁底部導覽、文字式 nav-btn）
+   ============================================================ */
+.h2 { font-size: 16px; font-weight: 700; margin: 0 0 10px; }
+.list { display: flex; flex-direction: column; }
+.list-item { display: flex; align-items: center; gap: 8px; padding: 10px 2px; border-bottom: 1px solid var(--border); }
+.list-item:last-child { border-bottom: 0; }
+.list-item a { min-width: 0; }
+.empty { text-align: center; padding: 22px 10px; color: var(--muted); }
+
+/* 底部導覽（取代舊 nav.tabs 的 svg 版；保留 nav.tabs 規則不衝突） */
+nav.bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; z-index: 30; display: grid; grid-template-columns: repeat(5, 1fr); background: #11171e; border-top: 1px solid var(--border); padding-bottom: env(safe-area-inset-bottom); }
+.nav-btn { background: none; border: 0; color: var(--muted); font-size: 12px; min-height: var(--nav-h); cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.nav-btn.active { color: var(--primary); font-weight: 700; }
+
+/* 品牌列（行動裝置也顯示；桌面不再用側邊欄樣式） */
+.brand { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px 4px; max-width: 1100px; margin: 0 auto; width: calc(100% - 28px); }
+.brand-title { font-weight: 800; font-size: 17px; }
+@media (min-width: 900px) {
+  .brand { padding: 16px 14px 6px; }
+  main { margin-left: 0; padding: 20px 14px calc(var(--nav-h) + 24px + env(safe-area-inset-bottom)); }
+  nav.bottom-nav { left: 0; }
+}
+.cloudchip.ok { color: var(--primary); border-color: #1f6f5f; background: #12261f; }
+.cloudchip.warn { color: var(--warn); border-color: #6b5a22; background: #2a2412; }
+
+/* chips（首頁盤後法人、自選分類） */
+.chip.link { color: var(--primary); }
+.chip.on { background: var(--primary); color: var(--primary-fg); border-color: var(--primary); font-weight: 600; }
+
+/* details 卡片：移除預設箭頭，summary 可點 */
+details.card summary { list-style: none; cursor: pointer; }
+details.card summary::-webkit-details-marker { display: none; }
+details.card summary.h2 { margin-bottom: 6px; }
+
+/* 對話／通知（profile.js 用） */
+.chatbox { display: flex; flex-direction: column; gap: 8px; margin: 10px 0; max-height: 40vh; overflow-y: auto; }
+.msg.sys { background: var(--card2); border: 1px solid var(--border); align-self: flex-start; max-width: 92%; }
+.formrow { display: flex; gap: 8px; margin-top: 10px; }
+.formrow input { flex: 1; }
+.item.unread { font-weight: 600; }
+.dot.red { background: var(--up); }
+
+/* 索引卡可當連結 */
+a.idx-card.quote { display: block; }
+.idx-card .row { align-items: flex-start; }
+

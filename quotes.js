@@ -1,6 +1,6 @@
-// 行情：每筆報價都標示「來源」與「時間」，不假裝即時。
+// quotes.js — 行情：每筆報價標示來源與時間，不假裝即時。
 //   加密貨幣 → Binance 公開行情（免金鑰，瀏覽器直連，即時）
-//   台股 / 美股 → data/prices.json（由 GitHub 排程自動更新，延遲報價）
+//   台股 / 美股 / 指數 / ETF → data/prices.json（GitHub 排程自動更新，延遲報價）
 //   以上都沒有 → 使用者手動輸入的價格；再沒有 → 無報價
 import { keyOf } from "./portfolio.js";
 
@@ -21,7 +21,7 @@ export const binanceSymbol = (symbol) => `${symbol.toUpperCase()}USDT`;
 /** 讀取排程產生的行情檔；失敗回傳 null */
 export async function loadPricesFile() {
   try {
-    const d = await getJSON(`data/prices.json?t=${Date.now()}`);
+    const d = await getJSON(`prices.json?t=${Date.now()}`);
     return d && typeof d === "object" ? d : null;
   } catch { return null; }
 }
@@ -52,7 +52,7 @@ export async function loadBinanceQuotes(symbols) {
   }
 }
 
-/** 由排程檔組出報價 */
+/** 由排程檔組出報價（change = 漲跌幅百分比） */
 export function quotesFromFile(file) {
   const out = {};
   if (!file?.quotes) return out;
@@ -66,7 +66,7 @@ export function quotesFromFile(file) {
 
 /**
  * 整合所有來源。優先順序：Binance 即時 > 排程檔 > 手動價格。
- * 回傳 { quotes, status }；status 供畫面顯示各來源是否正常。
+ * 回傳 { quotes, status, file }；status 供畫面顯示各來源是否正常。
  */
 export async function refreshQuotes({ cryptoSymbols, manual = {}, fileCache = null }) {
   const status = { binance: "skip", file: "fail", fileUpdated: null, fx: null };

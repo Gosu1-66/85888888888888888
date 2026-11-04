@@ -1,25 +1,32 @@
-// 離線快取：同網域檔案「網路優先、失敗改用快取」，所以更新網站後一定拿到新版，沒網路時也能開。
-const CACHE = "invest-v1";
-const SHELL = ["./", "index.html", "style.css", "app.js", "portfolio.js", "catalog.js", "quotes.js", "indicators.js", "analysis.js", "charts.js", "manifest.webmanifest", "icon-192.png", "icon-180.png"];
+// sw.js — Service Worker：外殼快取優先；行情／市場檔網路優先（排程更新後自動拿最新）。
+const VERSION = "gosu-v2-1";
+const SHELL = [
+  "./",
+  "index.html",
+  "style.css",
+  "ui.js", "state.js", "portfolio.js", "catalog.js",
+  "quotes.js", "marketdata.js",
+  "charts.js", "indicators.js", "analysis.js",
+  "app.js", "home.js", "analysisview.js", "search.js", "portfolios.js", "profile.js", "cloud.js",
+  "manifest.webmanifest",
+  "icon-180.png", "icon-192.png", "icon-512.png",
+];
+const DATA = ["prices.json", "market.json"];
 
 self.addEventListener("install", (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(VERSION).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
 });
 self.addEventListener("activate", (e) => {
-  e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter((k) => k !== CACHE).map((k) => caches.delete(k)))).then(() => self.clients.claim()));
+  e.waitUntil(caches.keys().then((keys) => Promise.all(keys.filter((k) => k !== VERSION).map((k) => caches.delete(k)))).then(() => self.clients.claim()));
 });
 self.addEventListener("fetch", (e) => {
-  const req = e.request, url = new URL(req.url);
-  if (req.method !== "GET" || url.origin !== location.origin) return; // 行情 API 等跨網域請求不經過快取
-  e.respondWith((async () => {
-    try {
-      const res = await fetch(req);
-      if (res.ok) { const copy = res.clone(); caches.open(CACHE).then((c) => c.put(url.pathname.endsWith("prices.json") ? url.pathname : req, copy)); }
-      return res;
-    } catch {
-      const hit = (await caches.match(url.pathname.endsWith("prices.json") ? url.pathname : req, { ignoreSearch: true })) || (req.mode === "navigate" ? await caches.match("index.html") : null);
-      if (hit) return hit;
-      return new Response("離線中", { status: 503, headers: { "content-type": "text/plain; charset=utf-8" } });
-    }
-  })());
+  const url = new URL(e.request.url);
+  if (e.request.method !== "GET" || url.origin !== self.location.origin) return;
+  const path = url.pathname.split("/").pop();
+  if (DATA.includes(path)) {
+    // 網路優先，失敗才用快取（保持行情新鮮度）
+    e.respondWith(fetch(e.request).then((r) => { const copy = r.clone(); caches.open(VERSION).then((c) => c.put(e.request, copy)); return r; }).catch(() => caches.match(e.request)));
+    return;
+  }
+  e.respondWith(caches.match(e.request).then((hit) => hit || fetch(e.request).then((r) => { const copy = r.clone(); caches.open(VERSION).then((c) => c.put(e.request, copy)); return r; })));
 });

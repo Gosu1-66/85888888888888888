@@ -1,26 +1,26 @@
-<!DOCTYPE html>
-<html lang="zh-Hant">
+<!doctype html>
+<html lang="zh-Hant-TW">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>台股看盤｜投資助手</title>
+<meta name="description" content="台股、美股與加密貨幣的看盤與投資管理工具。可登入 Google／Yahoo 雲端同步。">
 <meta name="theme-color" content="#0e1319">
+<meta name="color-scheme" content="dark">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>我的投資助手</title>
+<meta name="apple-mobile-web-app-title" content="台股看盤">
 <link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" type="image/png" href="icon-192.png">
-<link rel="apple-touch-icon" href="icon-192.png">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<div id="app">
-  <main>
-    <div id="view"></div>
-  </main>
-  <nav class="tabs" id="tabs"></nav>
-  <div id="modal"></div>
-  <div id="toast" class="hidden"></div>
-</div>
+<div id="root"></div>
+<div id="modal"></div>
+<div id="toast" class="hidden" role="status"></div>
+<noscript><p style="padding:24px">這個工具需要啟用 JavaScript 才能使用。</p></noscript>
 <script type="module" src="app.js"></script>
 </body>
 </html>
