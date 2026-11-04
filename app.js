@@ -24,16 +24,24 @@ const NAV_LABEL = ["首頁", "行情", "搜索", "組合", "我的"];
 
 /* ── 渲染 ── */
 function render() {
-  const { name, params } = parseRoute();
-  if (!VIEWS[name]) { location.hash = "#/home"; return; }
-  S.tab = name;
-  S.q = params.get("s") || "";
-  const app = $("#app");
-  app.innerHTML = VIEWS[name].view();
-  if (VIEWS[name].after) VIEWS[name].after();
-  updateNav(name);
-  updateCloudChip();
-  window.scrollTo(0, 0);
+  try {
+    const { path, params } = parseRoute();
+    const name = String(path || "/").replace(/^\/+/, "").split("/")[0] || "home";
+    if (!VIEWS[name]) { location.hash = "#/home"; return; }
+    S.tab = name;
+    S.q = params.get("s") || "";
+    const app = $("#app");
+    if (!app) return;
+    app.innerHTML = VIEWS[name].view();
+    if (VIEWS[name].after) VIEWS[name].after();
+    updateNav(name);
+    updateCloudChip();
+    window.scrollTo(0, 0);
+  } catch (e) {
+    console.error("[render]", e);
+    const app = $("#app");
+    if (app) app.innerHTML = `<div class="card"><p>頁面載入發生錯誤：${(e && e.message) || e}</p></div>`;
+  }
 }
 
 function updateNav(name) {
@@ -79,7 +87,8 @@ export async function refreshAll(silent = false) {
 }
 
 async function boot() {
-  await refreshAll(true);
+  render();
+  try { await refreshAll(true); } catch (e) { console.error("[boot]", e); }
   initCloud();
 }
 
