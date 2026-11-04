@@ -1,6 +1,6 @@
 // 離線快取：同網域檔案「網路優先、失敗改用快取」，所以更新網站後一定拿到新版，沒網路時也能開。
 const CACHE = "invest-v1";
-const SHELL = ["./", "index.html", "css/style.css", "js/app.js", "js/portfolio.js", "js/catalog.js", "js/quotes.js", "js/indicators.js", "js/analysis.js", "js/charts.js", "manifest.webmanifest", "icons/icon-192.png", "icons/icon-180.png"];
+const SHELL = ["./", "index.html", "style.css", "app.js", "portfolio.js", "catalog.js", "quotes.js", "indicators.js", "analysis.js", "charts.js", "manifest.webmanifest", "icon-192.png", "icon-180.png"];
 
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
