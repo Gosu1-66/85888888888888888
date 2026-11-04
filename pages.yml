@@ -1,0 +1,65 @@
+# 部署網站，並定時更新台股／美股行情（公開專案免費，不需金鑰）。
+# 使用前請到 Settings → Pages → Source 選擇「GitHub Actions」。
+name: 部署與更新行情
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "*/15 1-6 * * 1-5"    # 台股盤中（台北時間 09:00–14:59）
+    - cron: "*/20 13-21 * * 1-5"  # 美股盤中
+    - cron: "30 22 * * 1-5"       # 兩邊收盤後再抓一次
+    - cron: "0 0 1 * *"           # 每月一次：留一筆紀錄，避免 GitHub 因長期無動靜停用排程
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: 每月保持排程運作
+        if: github.event.schedule == '0 0 1 * *'
+        run: |
+          date -u +%F > .keepalive
+          git config user.name "keepalive-bot"
+          git config user.email "keepalive-bot@users.noreply.github.com"
+          git add .keepalive
+          git commit -m "保持排程運作" || true
+          git push || true
+
+      - name: 取得上次部署的行情（單一標的失敗時沿用舊資料）
+        continue-on-error: true
+        run: curl -fsSL "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/data/prices.json" -o data/prices.json
+
+      - name: 更新行情
+        continue-on-error: true
+        run: node scripts/fetch-prices.mjs
+
+      - name: 整理要發布的檔案
+        run: |
+          mkdir _site
+          cp -r index.html manifest.webmanifest sw.js css js data icons _site/
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@v4
