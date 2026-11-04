@@ -71,7 +71,9 @@ App 內也有逐步導向（個人中心 → 雲端同步，或首頁「雲端�
 
 1. **建立專案**：到 [console.firebase.google.com](https://console.firebase.google.com) 用 Google 帳號登入 → 「建立專案」（名稱隨意）→ 選擇 **Spark 免費方案**（不需信用卡）。
 2. **啟用登入**：左側 **Authentication → Sign-in method** → 啟用 **Google**（直接「啟用」儲存）與 **Yahoo**（需先取得 Client ID／Secret，見下方）。
-   - Yahoo：到 [developer.yahoo.com/apps](https://developer.yahoo.com/apps) 建立 App；**Redirect URI** 填 Firebase 顯示的那一組（格式 `https://{你的專案}.firebaseapp.com/__/auth/handler`）；把 Client ID／Secret 貼回 Firebase 的 Yahoo 設定。只想要 Google 登入可以完全跳過 Yahoo。
+
+
+（2026-11-05 新版全功能上線：台股/美股/加密貨幣看盤 + Google/Yahoo 登入雲端同步）   - Yahoo：到 [developer.yahoo.com/apps](https://developer.yahoo.com/apps) 建立 App；**Redirect URI** 填 Firebase 顯示的那一組（格式 `https://{你的專案}.firebaseapp.com/__/auth/handler`）；把 Client ID／Secret 貼回 Firebase 的 Yahoo 設定。只想要 Google 登入可以完全跳過 Yahoo。
 3. **建立資料庫**：左側 **Firestore Database → 建立資料庫** → 位置選 **asia-east1（台灣）** → 安全規則選 **production mode** → 建立後把規則換成（僅允許本人讀寫自己那筆資料，最安全）：
 
    ```
