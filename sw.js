@@ -1,5 +1,5 @@
-// sw.js — Service Worker：外殼快取優先；行情／市場檔網路優先（排程更新後自動拿最新）。
-const VERSION = "gosu-v2-1";
+// sw.js — Service Worker：程式碼/資料採網路優先（部署即時生效），圖片等資源快取優先。
+const VERSION = "gosu-v2-2";
 const SHELL = [
   "./",
   "index.html",
@@ -23,8 +23,9 @@ self.addEventListener("fetch", (e) => {
   const url = new URL(e.request.url);
   if (e.request.method !== "GET" || url.origin !== self.location.origin) return;
   const path = url.pathname.split("/").pop();
-  if (DATA.includes(path)) {
-    // 網路優先，失敗才用快取（保持行情新鮮度）
+  // 程式碼與資料（js/css/json/html 及根路徑）：網路優先，離線才回快取 → 部署即時生效
+  const isFresh = DATA.includes(path) || /\.(js|css|json|html)$/.test(path) || path === "" || url.pathname.endsWith("/") || url.pathname.endsWith(".webmanifest");
+  if (isFresh) {
     e.respondWith(fetch(e.request).then((r) => { const copy = r.clone(); caches.open(VERSION).then((c) => c.put(e.request, copy)); return r; }).catch(() => caches.match(e.request)));
     return;
   }
