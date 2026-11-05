@@ -1,7 +1,7 @@
 // app.js — 應用程式入口：路由、渲染、啟動流程、全域事件、品牌列雲端狀態。
 import { $, registerAction, fireAction, parseRoute, toast } from "./ui.js";
 import { S, save, uni, evaluateAlerts } from "./state.js";
-import { refreshQuotes } from "./quotes.js";
+import { refreshQuotes, loadLogos } from "./quotes.js";
 import { refreshMarket } from "./marketdata.js";
 import { initCloud, cloudStatus } from "./cloud.js";
 import { viewHome, afterHome } from "./home.js";
@@ -77,6 +77,7 @@ export async function refreshAll(silent = false) {
     const r = await refreshQuotes({ cryptoSymbols: crypto, manual: S.set.manual, fileCache: null });
     S.quotes = r.quotes;
     S.status = r.status;
+    S.logos = await loadLogos();
     if (r.file) { S.file = r.file; S.fileAt = Date.now(); }
     S.lastRefresh = Date.now();
     evaluateAlerts(r.quotes);
