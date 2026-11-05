@@ -99,7 +99,9 @@ ul.bul { margin: 6px 0 0; padding-left: 18px; } ul.bul li { margin: 4px 0; }
 .qrow { display: flex; align-items: center; gap: 10px; padding: 9px 2px; border-bottom: 1px solid var(--border); text-decoration: none; color: inherit; }
 .qrow:last-child { border-bottom: 0; }
 .qrow-id { display: flex; flex-direction: column; min-width: 74px; }
-.qrow-logo { width: 30px; height: 30px; border-radius: 9px; border: 1px solid; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; flex: none; }
+.qrow-logo { width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; flex: none; position: relative; overflow: hidden; }
+.qrow-logo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; padding: 2px; background: #fff; }
+.lg-char { line-height: 1; }
 .qrow-id .small { font-size: 12px; line-height: 1.35; }
 .qrow-sym { font-weight: 700; font-size: 15px; }
 .qrow-px { display: flex; flex-direction: column; align-items: flex-end; min-width: 76px; margin-left: auto; }
