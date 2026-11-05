@@ -110,6 +110,13 @@ function stockLogo(key, name, sym) {
   const clean = String(name || sym).replace(/[^\u4e00-\u9fa5A-Za-z0-9]/g, "");
   const ch = clean.slice(0, 1) || String(sym).slice(0, 1);
   const fallback = `<span class="lg-char" style="color:hsl(${h} 72% 74%)">${esc(ch)}</span>`;
+  const cid = S.cryptoLogos?.[String(sym).toUpperCase()];   // 加密貨幣：CoinGecko 官方圖示
+  if (cid) {
+    return `<span class="qrow-logo" style="background:#fff">
+      <img src="${cid}" alt="" loading="lazy" onerror="this.remove()">
+      ${fallback}
+    </span>`;
+  }
   const id = S.logos?.[key];
   if (id) {
     return `<span class="qrow-logo" style="background:#fff">
