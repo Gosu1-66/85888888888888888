@@ -131,9 +131,10 @@ function sparkLine(key) {
 }
 
 function hotStocks() {
+  const top = HOT_STOCKS.slice(0, 3);           // 首頁只露前 3 檔，其餘點「看更多」進列表
   return `<section class="card">
     <h2 class="h2">熱門股</h2>
-    <div class="qrows">${HOT_STOCKS.map((h) => {
+    <div class="qrows">${top.map((h) => {
       const key = keyOf("台股", h.symbol);
       const q = S.quotes[key];
       const w = S.set.watch.includes(key);
@@ -150,6 +151,7 @@ function hotStocks() {
         <div class="qrow-spark">${sparkLine(key)}</div>
       </a>`;
     }).join("")}</div>
+    <a class="more-link" href="#/search">看更多熱門股（共 ${HOT_STOCKS.length} 檔）›</a>
   </section>`;
 }
 
