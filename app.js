@@ -28,15 +28,25 @@ function render() {
     const { path, params } = parseRoute();
     const name = String(path || "/").replace(/^\/+/, "").split("/")[0] || "home";
     if (!VIEWS[name]) { location.hash = "#/home"; return; }
+    const hashNow = location.hash || "#/home";
+    const sameView = S.__renderHash === hashNow;   // 同一頁重繪（例如按 +自選）→ 保留捲動位置
+    const keepY = window.scrollY || 0;
     S.tab = name;
-    S.q = params.get("s") || "";
+    const sp = params.get("s");
+    S.q = sp && !String(sp).includes(":") ? sp : "";
     const app = $("#app");
     if (!app) return;
     app.innerHTML = VIEWS[name].view();
     if (VIEWS[name].after) VIEWS[name].after();
     updateNav(name);
     updateCloudChip();
-    window.scrollTo(0, 0);
+    if (sameView) {
+      const restore = () => window.scrollTo(0, keepY);
+      restore();
+      requestAnimationFrame(restore);        // 重繪後 body 高度變動，iOS 會偷偷歸零，補兩次
+      setTimeout(restore, 80);
+    } else window.scrollTo(0, 0);
+    S.__renderHash = hashNow;
   } catch (e) {
     console.error("[render]", e);
     const app = $("#app");
