@@ -120,7 +120,7 @@ document.addEventListener("click", (e) => {
 function brandRow() {
   const chip = `<span class="cloudchip" id="cloudchip" data-act="go-cloud">本機模式</span>`;
   return `<header class="brand">
-    <div class="brand-title">投資助手</div>
+    <div class="brand-title">GU1</div>
     ${chip}
   </header>`;
 }
