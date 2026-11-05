@@ -4,6 +4,17 @@ import { universe } from "./catalog.js";
 
 const DATA_KEY = "gosu-data-v3", SET_KEY = "gosu-settings-v2", OLD_DATA_KEY = "gosu-portfolio-v2", OLD_SET_KEY = "gosu-settings-v1";
 
+/* 內建 Firebase 設定（純前端公開資訊；資料安全由登入身分 + Firestore 規則保護）
+   目的是讓新裝置（例如手機）不必手動貼設定，打開就能直接登入同步。 */
+const DEFAULT_CLOUD_CONFIG = {
+  apiKey: "AIzaSyD6eUlPL3IJYoHdGzYUrGWiv7vO1muT56A",
+  authDomain: "gosu-invest-sync.firebaseapp.com",
+  projectId: "gosu-invest-sync",
+  storageBucket: "gosu-invest-sync.firebasestorage.app",
+  messagingSenderId: "697053600813",
+  appId: "1:697053600813:web:b0c32865d90a333502eca4",
+};
+
 const DEFAULT_SET = {
   watch: ["台股:2330", "台股:0050", "美股:NVDA", "加密貨幣:BTC"],
   custom: [], manual: {}, fxManual: null,
@@ -63,6 +74,12 @@ export function save() {
   catch { if (!storageWarned) { storageWarned = true; import("./ui.js").then(({ toast }) => toast("⚠ 無法寫入瀏覽器儲存空間，資料可能不會保留（請檢查是否為無痕模式）")); } }
   try { navigator.storage?.persist?.(); } catch {}
   (S.__hooks.save || []).forEach((f) => { try { f(); } catch {} });
+}
+
+/* 尚未設定雲端的新裝置：自動套用內建設定（若使用者主動清除過則不還原） */
+if (!S.set.cloud.config && !S.set.cloud.cleared) {
+  S.set.cloud = { ...S.set.cloud, enabled: true, config: DEFAULT_CLOUD_CONFIG, error: null };
+  save();
 }
 
 /* ── 存取器 ── */
