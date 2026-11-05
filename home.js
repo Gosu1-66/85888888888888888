@@ -11,7 +11,7 @@ const ENTRY_META = {
   inst: { label: "法人排名", icon: "🏦", href: "#/inst" },
   daytrade: { label: "當沖", icon: "⚡", href: "#/daytrade" },
   scan: { label: "選股", icon: "🔍", href: "#/scan" },
-  tools: { label: "工具", icon: "🧰", href: "#/portfolio" },
+  tools: { label: "工具", icon: "🧰", href: "#/tools" },
   watchlist: { label: "自選", icon: "⭐", act: "scroll-to", target: "watchlist" },
   index: { label: "大盤", icon: "📈", href: "#/indexb" },
   custom: { label: "自訂", icon: "🎛️", href: "#/profile?f=entries" },
