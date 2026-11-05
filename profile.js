@@ -180,7 +180,7 @@ function openNotices() {
           <span class="dot ${n.read ? "" : "red"}"></span>
           <div style="flex:1">
             <div>${esc(n.text || "")}</div>
-            <div class="muted small">${esc(ageText(Date.now() - num(n.time)))}</div>
+            <div class="muted small">${esc(ageText(num(n.time)))}</div>
           </div>
         </div>`).join("")
     : '<div class="empty card">尚無通知（價格警報觸發時會出現在這裡）</div>';
@@ -493,7 +493,7 @@ export function viewProfile() {
     <div class="h2" style="margin-top:16px">資料狀態</div>
     <div class="muted small">
       投資組合 ${(S.data.portfolios || []).length} 個｜持股 ${(S.data.assets || []).length} 筆｜交易 ${(S.data.trades || []).length} 筆<br>
-      行情：幣安 ${esc(status.binance || "—")}｜台股檔案 ${esc(status.file || "—")}${status.fileUpdated ? `｜更新於 ${esc(ageText(Date.now() - status.fileUpdated))}` : ""}
+      行情：幣安 ${esc(status.binance || "—")}｜台股檔案 ${esc(status.file || "—")}${status.fileUpdated ? `｜更新於 ${esc(ageText(status.fileUpdated))}` : ""}
     </div>
 
     <div class="h2" style="margin-top:16px">手動報價覆蓋</div>

@@ -263,7 +263,7 @@ export function viewCloud() {
         <span class="cloudchip ok">已連線</span>
       </div>
       <div class="small muted" style="margin-top:10px">
-        上次同步：${c.lastSync ? ageText(Date.now() - c.lastSync) : "尚未同步"}（本機任何變更會在儲存後自動上傳）<br>
+        上次同步：${c.lastSync ? ageText(c.lastSync) : "尚未同步"}（本機任何變更會在儲存後自動上傳）<br>
         免費額度：Firebase Spark 方案（每月約 1 GiB 儲存、50K 讀取、20K 寫入，對個人投資紀錄綽綽有餘；超過才會收費）。
       </div>
       ${err}
