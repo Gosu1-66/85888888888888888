@@ -186,7 +186,7 @@ function renderIndustry() {
       <td colspan="3" class="small muted">熱門成分股 ${v.stocks != null ? fmt(v.stocks, 0) : "—"} 檔</td>
       <td class="num ${tone(v.totalNet)}"><strong>${zhang(v.totalNet)}</strong></td>
     </tr>`).join("");
-  return `<details class="card">
+  return `<details class="card" open>
     <summary class="h2">法人產業資金</summary>
     <table class="mini-tbl">
       <thead><tr><th>產業</th><th>外資</th><th>投信</th><th>自營</th><th>合計</th></tr></thead>
@@ -218,7 +218,7 @@ function renderEtfs() {
       <span class="small muted">報酬／風險計算中…</span>
     </div>`;
   }).join("");
-  return `<details class="card">
+  return `<details class="card" open>
     <summary class="h2">ETF 觀察</summary>
     <div class="list">${rows}</div>
     <div class="small muted" style="margin-top:6px">規模／人氣：無公開即時規模（TDCC 受益人數來源不可用），改以成交量推估人氣。點列進入個股詳情。</div>
