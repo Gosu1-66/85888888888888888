@@ -103,7 +103,15 @@ function radar() {
   </section>`;
 }
 
-/* ── 熱門股（一行一檔：代號名稱 / 價格漲跌 / 迷你走勢） ── */
+/* ── 熱門股（一行一檔：公司圖示 / 代號名稱 / 價格漲跌 / 迷你走勢） ── */
+function stockLogo(name, sym) {
+  let h = 0;
+  for (const c of String(sym)) h = (h * 31 + c.charCodeAt(0)) % 360;
+  const clean = String(name || sym).replace(/[^\u4e00-\u9fa5A-Za-z0-9]/g, "");
+  const ch = clean.slice(0, 1) || String(sym).slice(0, 1);
+  return `<span class="qrow-logo" style="background:hsl(${h} 38% 20%);color:hsl(${h} 72% 74%);border-color:hsl(${h} 45% 34%)">${esc(ch)}</span>`;
+}
+
 function sparkLine(key) {
   const rows = S.file?.candles?.[key];
   if (!rows || rows.length < 2) return `<svg class="spark" viewBox="0 0 64 26" preserveAspectRatio="none"></svg>`;
@@ -122,6 +130,7 @@ function hotStocks() {
       const q = S.quotes[key];
       const w = S.set.watch.includes(key);
       return `<a class="qrow" href="#/search?s=${encodeURIComponent(key)}">
+        ${stockLogo(h.name, h.symbol)}
         <div class="qrow-id">
           <span class="qrow-sym">${esc(h.symbol)}${w ? `<span class="dot"></span>` : ""}</span>
           <span class="muted small">${esc(h.name)}</span>
