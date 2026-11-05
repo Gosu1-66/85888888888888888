@@ -24,16 +24,16 @@ function viewList() {
   const row = (x) => {
     const k = x.key, qq = S.quotes[k];
     const w = S.set.watch.includes(k);
-    return `<div class="list-item">
-      <a href="#/search?s=${encodeURIComponent(k)}" style="text-decoration:none;color:inherit;flex:1;min-width:0">
-        <strong>${esc(x.symbol)}</strong> <span class="muted small">${esc(x.name)}</span>
-        ${x.board ? `<span class="tag mid">${esc(x.board)}</span>` : ""}
-        ${x.industry ? `<span class="tag mid">${esc(x.industry)}</span>` : ""}
+    return `<div class="srow">
+      <a class="srow-mid" href="#/search?s=${encodeURIComponent(k)}">
+        <div class="srow-name"><strong>${esc(x.symbol)}</strong> <span class="muted">${esc(x.name)}</span></div>
+        <div class="srow-sub muted">${esc([x.board, x.industry, qq ? (qq.source === "binance" ? "即時" : "延遲") : "無報價"].filter(Boolean).join(" · "))}</div>
       </a>
-      <span class="num">${qq ? fmt(qq.price, 2) : "—"}</span>
-      <span class="num ${qq ? tone(qq.change) : ""}">${qq ? pct(qq.change) : "—"}</span>
-      ${qq ? badge(qq) : `<span class="badge none">無報價</span>`}
-      <button type="button" class="btn sm ${w ? "" : "primary"}" data-act="toggle-watch" data-key="${esc(k)}">${w ? "已加" : "＋自選"}</button>
+      <div class="srow-px">
+        <div class="num">${qq ? fmt(qq.price, 2) : "—"}</div>
+        <div class="num small ${qq ? tone(qq.change) : ""}">${qq ? pct(qq.change) : "—"}</div>
+      </div>
+      <button type="button" class="btn sm srow-add ${w ? "" : "primary"}" data-act="toggle-watch" data-key="${esc(k)}">${w ? "已加" : "＋"}</button>
     </div>`;
   };
 
