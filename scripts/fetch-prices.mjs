@@ -33,6 +33,24 @@ async function fetchChart(sym) {
   return candles;
 }
 
+const FUGLE_KEY = process.env.FUGLE_API_KEY || "";
+const FUGLE_QUOTE = (sym) =>
+  `https://api.fugle.tw/marketdata/v1.0/stock/intraday/quote/${encodeURIComponent(sym)}`;
+
+// 富果即時報價（僅台股）；K 線仍由 Yahoo 提供
+async function fetchFugleQuote(sym) {
+  const r = await fetch(FUGLE_QUOTE(sym), {
+    headers: { "X-API-KEY": FUGLE_KEY, Accept: "application/json", "User-Agent": UA },
+  });
+  if (!r.ok) throw new Error(`FUGLE HTTP ${r.status}`);
+  const j = await r.json();
+  const price = j.lastPrice ?? j.closePrice ?? j.lastTrade?.price;
+  if (price == null) throw new Error("FUGLE no price");
+  const prev = j.previousClose ?? null;
+  const time = j.lastUpdated ? Math.round(j.lastUpdated / 1e6) : Math.round(Date.now() / 1000);
+  return { price, prev, time };
+}
+
 const yahooSym = (w) => {
   const { market: m, symbol: s } = w;
   if (m === "台股") return w.board === "上櫃" ? `${s}.TWO` : `${s}.TW`;
@@ -51,6 +69,14 @@ async function main() {
       candles[key] = cs;
       const last = cs[cs.length - 1], prev = cs[cs.length - 2] || cs[cs.length - 1];
       quotes[key] = { price: last[4], prev: prev[4], time: last[0] };
+      // 台股：若設定了 FUGLE_API_KEY，改用富果即時報價覆蓋（較 Yahoo 即時）
+      if (FUGLE_KEY && w.market === "台股") {
+        try {
+          const q = await fetchFugleQuote(w.symbol.toUpperCase());
+          quotes[key] = { price: q.price, prev: q.prev ?? quotes[key].prev, time: q.time };
+          process.stdout.write(`  ↳ fugle ${key} ${q.price} @${new Date(q.time * 1000).toLocaleTimeString("zh-TW", { timeZone: "Asia/Taipei" })}\n`);
+        } catch (e) { process.stdout.write(`  ↳ fugle ✗ ${key} ${e.message}\n`); }
+      }
       process.stdout.write(`✓ ${key} ${last[4]}\n`);
     } catch (e) { fail++; process.stdout.write(`✗ ${key} ${e.message}\n`); }
     await new Promise((r) => setTimeout(r, 120));
