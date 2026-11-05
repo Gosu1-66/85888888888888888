@@ -26,11 +26,14 @@ jobs:
       - name: Fetch logos (TradingView)
         continue-on-error: true
         run: node scripts/fetch-logos.mjs
+      - name: Fetch crypto logos (CoinGecko)
+        continue-on-error: true
+        run: node scripts/fetch-crypto-logos.mjs
       - name: Commit & push updated data
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A prices.json market.json logos.json
+          git add -A prices.json market.json logos.json crypto-logos.json
           if git diff --cached --quiet; then
             echo "no data changes"
           else
