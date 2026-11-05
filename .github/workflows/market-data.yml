@@ -24,6 +24,7 @@ jobs:
       - name: Fetch market data (TWSE)
         run: node scripts/fetch-market.mjs
       - name: Fetch logos (TradingView)
+        continue-on-error: true
         run: node scripts/fetch-logos.mjs
       - name: Commit & push updated data
         run: |
