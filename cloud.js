@@ -18,7 +18,7 @@ async function loadFirebase() {
     import(APP + "firebase-auth.js"),
     import(APP + "firebase-firestore.js"),
   ]);
-  mod = { app: null, auth: null, db: null, google: GoogleAuthProvider, oauth: OAuthProvider, signInWithPopup, signOut, onAuthStateChanged, getFirestore, doc, getDoc, setDoc, serverTimestamp };
+  mod = { app: null, auth: null, db: null, getAuth, google: GoogleAuthProvider, oauth: OAuthProvider, signInWithPopup, signOut, onAuthStateChanged, getFirestore, doc, getDoc, setDoc, serverTimestamp };
   return mod;
 }
 
