@@ -104,12 +104,20 @@ function radar() {
 }
 
 /* ── 熱門股（一行一檔：公司圖示 / 代號名稱 / 價格漲跌 / 迷你走勢） ── */
-function stockLogo(name, sym) {
+function stockLogo(key, name, sym) {
   let h = 0;
   for (const c of String(sym)) h = (h * 31 + c.charCodeAt(0)) % 360;
   const clean = String(name || sym).replace(/[^\u4e00-\u9fa5A-Za-z0-9]/g, "");
   const ch = clean.slice(0, 1) || String(sym).slice(0, 1);
-  return `<span class="qrow-logo" style="background:hsl(${h} 38% 20%);color:hsl(${h} 72% 74%);border-color:hsl(${h} 45% 34%)">${esc(ch)}</span>`;
+  const fallback = `<span class="lg-char" style="color:hsl(${h} 72% 74%)">${esc(ch)}</span>`;
+  const id = S.logos?.[key];
+  if (id) {
+    return `<span class="qrow-logo" style="background:#fff">
+      <img src="https://s3-symbol-logo.tradingview.com/${encodeURIComponent(id)}--big.svg" alt="" loading="lazy" onerror="this.remove()">
+      ${fallback}
+    </span>`;
+  }
+  return `<span class="qrow-logo" style="background:hsl(${h} 38% 20%);border-color:hsl(${h} 45% 34%)">${fallback}</span>`;
 }
 
 function sparkLine(key) {
@@ -130,7 +138,7 @@ function hotStocks() {
       const q = S.quotes[key];
       const w = S.set.watch.includes(key);
       return `<a class="qrow" href="#/search?s=${encodeURIComponent(key)}">
-        ${stockLogo(h.name, h.symbol)}
+        ${stockLogo(key, h.name, h.symbol)}
         <div class="qrow-id">
           <span class="qrow-sym">${esc(h.symbol)}${w ? `<span class="dot"></span>` : ""}</span>
           <span class="muted small">${esc(h.name)}</span>
@@ -158,6 +166,7 @@ function watchTab() {
   const rows = list.length ? list.map(({ key, u }) => {
     const q = S.quotes[key];
     return `<div class="list-item">
+      ${stockLogo(key, u.name, u.symbol)}
       <a href="#/search?s=${encodeURIComponent(key)}" style="text-decoration:none;color:inherit;flex:1;min-width:0">
         <strong>${esc(u.symbol)}</strong> <span class="muted small">${esc(u.name)}</span>
         ${u.board ? `<span class="tag mid">${esc(u.board)}</span>` : ""}
