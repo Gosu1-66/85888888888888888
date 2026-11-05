@@ -13,13 +13,40 @@ let subs = [];  // 清理用
 /* ── 動態載入 Firebase SDK（gstatic CDN） ── */
 async function loadFirebase() {
   if (mod) return mod;
-  const [{ initializeApp }, { getAuth, GoogleAuthProvider, signInWithPopup, signOut, OAuthProvider, onAuthStateChanged }, { getFirestore, doc, getDoc, setDoc, serverTimestamp }] = await Promise.all([
+  const [{ initializeApp }, { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, OAuthProvider, onAuthStateChanged }, { getFirestore, doc, getDoc, setDoc, serverTimestamp }] = await Promise.all([
     import(APP + "firebase-app.js"),
     import(APP + "firebase-auth.js"),
     import(APP + "firebase-firestore.js"),
   ]);
-  mod = { app: null, auth: null, db: null, getAuth, google: GoogleAuthProvider, oauth: OAuthProvider, signInWithPopup, signOut, onAuthStateChanged, getFirestore, doc, getDoc, setDoc, serverTimestamp };
+  mod = { app: null, auth: null, db: null, getAuth, google: GoogleAuthProvider, oauth: OAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged, getFirestore, doc, getDoc, setDoc, serverTimestamp };
   return mod;
+}
+
+/* 建立／重用 Firebase app（彈窗登入與跳轉登入共用） */
+async function ensureApp(c) {
+  const m = await loadFirebase();
+  if (!m.app || m.app.options.projectId !== c.config.projectId) {
+    m.app = (await import(APP + "firebase-app.js")).initializeApp(c.config);
+    m.auth = m.getAuth(m.app);
+    m.db = m.getFirestore(m.app);
+    m.unsubAuth = m.onAuthStateChanged(m.auth, (u) => {
+      if (u) { S.set.cloud.user = { uid: u.uid, email: u.email, name: u.displayName, photoURL: u.photoURL }; save(); }
+    });
+  }
+  return m;
+}
+
+/* 錯誤碼 → 中文說明 */
+function friendly(e) {
+  const code = e?.code || "";
+  if (code === "auth/unauthorized-domain") return "此網域尚未加入 Firebase 授權網域（Firebase 控制台 → Authentication → 設定 → 授權網域，加入 gosu1-66.github.io）";
+  if (code === "auth/popup-blocked") return "彈出視窗被擋下，已自動改用跳轉登入";
+  if (code === "auth/cancelled-popup-request") return "登入視窗被中斷，已自動改用跳轉登入";
+  if (code === "auth/operation-not-supported-in-this-environment") return "此瀏覽器不支援彈出式登入，已自動改用跳轉登入";
+  if (code === "auth/popup-closed-by-user") return "登入視窗被關閉，請再試一次";
+  if (code === "auth/api-key-not-valid.-please-pass-a-valid-api-key.") return "Firebase 設定中的 apiKey 無效，請到 Google Cloud 憑據頁重新建立 API 金鑰並更新設定";
+  if (code === "auth/network-request-failed") return "網路連線失敗，請檢查網路後再試";
+  return e?.message || "登入失敗";
 }
 
 const configOk = (c) => c && typeof c.apiKey === "string" && typeof c.authDomain === "string" && typeof c.projectId === "string";
@@ -33,34 +60,64 @@ export function cloudStatus() {
 }
 
 /* ── 登入 ── */
+function makeProvider(m, providerName) {
+  if (providerName === "google") return new m.google();
+  const p = new m.oauth("yahoo.com");
+  p.setCustomParameters({ prompt: "select_account" });
+  return p;
+}
+
 export async function login(providerName) {
   const c = S.set.cloud || {};
   if (!configOk(c.config)) { toast("尚未設定 Firebase 設定"); return null; }
-  const m = await loadFirebase();
+  let m = null;
   try {
-    if (!m.app || m.app.options.projectId !== c.config.projectId) {
-      m.app = (await import(APP + "firebase-app.js")).initializeApp(c.config);
-      m.auth = m.getAuth(m.app);
-      m.db = m.getFirestore(m.app);
-      m.unsubAuth = m.onAuthStateChanged(m.auth, (u) => {
-        if (u) { S.set.cloud.user = { uid: u.uid, email: u.email, name: u.displayName, photoURL: u.photoURL }; save(); }
-      });
-    }
-    const provider = providerName === "google" ? new m.google()
-      : (() => { const p = new m.oauth("yahoo.com"); p.setCustomParameters({ prompt: "select_account" }); return p; })();
-    const res = await m.signInWithPopup(m.auth, provider);
+    m = await ensureApp(c);
+    const res = await m.signInWithPopup(m.auth, makeProvider(m, providerName));
     S.set.cloud.user = { uid: res.user.uid, email: res.user.email, name: res.user.displayName, photoURL: res.user.photoURL };
     save();
     toast(`已登入：${res.user.email}`);
     await push();
     return res.user;
   } catch (e) {
-    const msg = e?.code === "auth/popup-blocked" ? "彈出視窗被擋下，請允許本頁面開啟彈出視窗後再試"
-      : e?.code === "auth/operation-not-supported-in-this-environment" ? "此瀏覽器不支援第三方登入（請用 Safari／Chrome／Edge）"
-      : e?.message || "登入失敗";
+    const code = e?.code || "";
+    // 彈出視窗被擋或環境不支援時，自動改用「跳轉」方式登入（手機 Safari／獨立 App 模式常見）
+    const recoverable = code === "auth/popup-blocked" || code === "auth/cancelled-popup-request" || code === "auth/operation-not-supported-in-this-environment";
+    if (recoverable && m?.auth) {
+      try {
+        S.set.cloud.error = null; save();
+        toast("彈出視窗受限，改用跳轉登入…");
+        await m.signInWithRedirect(m.auth, makeProvider(m, providerName));
+        return null;
+      } catch (e2) {
+        const msg2 = friendly(e2);
+        toast("登入失敗：" + msg2);
+        S.set.cloud.error = msg2; save();
+        return null;
+      }
+    }
+    const msg = friendly(e);
     toast("登入失敗：" + msg);
     S.set.cloud.error = msg; save();
     return null;
+  }
+}
+
+/* 跳轉登入返回後取回登入結果（啟動時呼叫一次） */
+export async function handleRedirectResult() {
+  const c = S.set.cloud || {};
+  if (!c.enabled || !configOk(c.config)) return;
+  try {
+    const m = await ensureApp(c);
+    const res = await m.getRedirectResult(m.auth);
+    if (res && res.user) {
+      S.set.cloud.user = { uid: res.user.uid, email: res.user.email, name: res.user.displayName, photoURL: res.user.photoURL };
+      S.set.cloud.error = null; save();
+      toast(`已登入：${res.user.email}`);
+      await push();
+    }
+  } catch (e) {
+    S.set.cloud.error = friendly(e); save();
   }
 }
 
@@ -142,6 +199,8 @@ export function initCloud() {
   // 啟用且已登入時，啟動時自動拉取一次
   const c = S.set.cloud || {};
   if (c.enabled && configOk(c.config) && c.user?.uid) setTimeout(syncNow, 1500);
+  // 若剛從「跳轉登入」返回，這裡取回登入結果
+  if (c.enabled && configOk(c.config)) setTimeout(handleRedirectResult, 600);
 }
 
 /* ── 設定頁 ── */
