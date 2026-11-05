@@ -60,6 +60,14 @@ export async function loadLogos() {
   } catch { return {}; }
 }
 
+/** 讀取加密貨幣官方圖示映射（代號 → 圖片網址）；失敗回傳 {} */
+export async function loadCryptoLogos() {
+  try {
+    const d = await getJSON(`crypto-logos.json?t=${Date.now()}`);
+    return d && typeof d === "object" ? d : {};
+  } catch { return {}; }
+}
+
 /** 由排程檔組出報價（change = 漲跌幅百分比） */
 export function quotesFromFile(file) {
   const out = {};
