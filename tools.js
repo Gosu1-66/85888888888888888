@@ -1,7 +1,7 @@
 // tools.js — 首頁功能入口的專屬頁面：市場雷達／法人排行／當沖排行／選股／大盤
 // 資料來源：market.json（TWSE 盤後）＋即時報價 S.quotes。單位：金額元→億、股→張。
 import { esc, fmt, pct, tone, registerAction, $ } from "./ui.js";
-import { S, save, uni, quoteOf } from "./state.js";
+import { S, save, uni, quoteOf, fxRate } from "./state.js";
 import { keyOf } from "./portfolio.js";
 import { breadth, institutions, instRank, industryFlow, daytrade, greedIndex, indices } from "./marketdata.js";
 import { HOT_STOCKS, CATALOG } from "./catalog.js";
@@ -121,11 +121,12 @@ export function viewDaytrade() {
   const d = daytrade();
   if (!d || !d.list) return `${head("當沖排行")}${emptyCard("當沖排行", "市場資料尚未更新")}`;
   const total = d.total?.shares;
+  const totalText = total == null ? "—" : (total > 1e10 ? yi(total) : zhang(total));
   const rows = d.list.slice().sort((a, b) => (b.shares || 0) - (a.shares || 0));
   return `${head("當沖排行")}
     <section class="card">
       <div class="row" style="justify-content:space-between"><span class="muted small">${esc(d.date || "")} 全市場當沖成交量</span>
-      <span class="num">${zhang(total)}</span></div>
+      <span class="num">${totalText}</span></div>
     </section>
     <section class="card">
       <h2 class="h2">當沖熱門（前 ${rows.length} 檔）</h2>
@@ -190,6 +191,74 @@ export function viewIndex() {
     <section class="card"><a class="more-link" href="#/analysis">看完整行情與技術分析 ›</a></section>`;
 }
 
+/* ── 工具（計算機） ── */
+export function viewTools() {
+  const fx = fxRate();
+  return `${head("工具")}
+    <section class="card">
+      <h2 class="h2">台股交易成本試算</h2>
+      <div class="row" style="gap:8px">
+        <input id="t-price" type="number" inputmode="decimal" placeholder="成交價（元）">
+        <input id="t-lots" type="number" inputmode="decimal" placeholder="張數">
+      </div>
+      <div class="row" style="gap:8px;margin-top:8px">
+        <button type="button" class="btn primary" data-act="calc-fee">計算</button>
+      </div>
+      <div id="t-out" class="small muted" style="margin-top:10px">手續費以 6 折計算（0.1425% × 0.6），賣出另加證交稅 0.3%。</div>
+    </section>
+    <section class="card">
+      <h2 class="h2">匯率換算（美元 ⇄ 新台幣）</h2>
+      <div class="row" style="gap:8px">
+        <input id="t-usd" type="number" inputmode="decimal" placeholder="美元金額">
+      </div>
+      <div class="row" style="gap:8px;margin-top:8px">
+        <button type="button" class="btn" data-act="calc-fx">換算</button>
+      </div>
+      <div id="t-fxout" class="small muted" style="margin-top:10px">目前匯率：1 美元 ≈ ${fx ? fx.toFixed(2) : "—"} 新台幣</div>
+    </section>
+    <section class="card">
+      <h2 class="h2">報酬率試算</h2>
+      <div class="row" style="gap:8px">
+        <input id="t-cost" type="number" inputmode="decimal" placeholder="投入成本">
+        <input id="t-now" type="number" inputmode="decimal" placeholder="目前市值">
+      </div>
+      <div class="row" style="gap:8px;margin-top:8px">
+        <button type="button" class="btn" data-act="calc-ror">計算</button>
+      </div>
+      <div id="t-rorout" class="small muted" style="margin-top:10px">報酬率＝（目前市值 − 成本）／成本。</div>
+    </section>
+    <p class="muted small" style="text-align:center">試算結果僅供參考，實際費用以券商公告為準。</p>`;
+}
+
 /* ── actions ── */
+registerAction("calc-fee", () => {
+  const p = parseFloat(($("#t-price") || {}).value || "0");
+  const lots = parseFloat(($("#t-lots") || {}).value || "0");
+  const out = $("#t-out");
+  if (!out) return;
+  if (!p || !lots) { out.innerHTML = "請輸入成交價與張數。"; return; }
+  const gross = p * lots * 1000;
+  const fee = (g) => Math.max(20, Math.round(g * 0.001425 * 0.6));
+  const buyFee = fee(gross), sellFee = fee(gross), tax = Math.round(gross * 0.003);
+  const total = buyFee + sellFee + tax;
+  out.innerHTML = `成交金額 ${fmt(gross, 0)} 元<br>買進手續費 ${fmt(buyFee, 0)} 元<br>賣出手續費 ${fmt(sellFee, 0)} 元<br>證交稅 ${fmt(tax, 0)} 元<br><strong>一買一賣總成本 ${fmt(total, 0)} 元（約 ${(total / gross * 100).toFixed(3)}%）</strong><br>損益兩平價約 ${fmt(p * (1 + total / gross), 2)} 元`;
+});
+registerAction("calc-fx", () => {
+  const usd = parseFloat(($("#t-usd") || {}).value || "0");
+  const out = $("#t-fxout");
+  if (!out) return;
+  const fx = fxRate();
+  if (!usd || !fx) { out.innerHTML = "請輸入美元金額。"; return; }
+  out.innerHTML = `${fmt(usd, 2)} 美元 ≈ <strong>${fmt(usd * fx, 0)}</strong> 新台幣（匯率 ${fx.toFixed(2)}）`;
+});
+registerAction("calc-ror", () => {
+  const c = parseFloat(($("#t-cost") || {}).value || "0");
+  const n = parseFloat(($("#t-now") || {}).value || "0");
+  const out = $("#t-rorout");
+  if (!out) return;
+  if (!c) { out.innerHTML = "請輸入成本與市值。"; return; }
+  const d = n - c, r = d / c * 100;
+  out.innerHTML = `損益 <span class="${tone(d)}">${d > 0 ? "+" : ""}${fmt(d, 0)}</span> 元，報酬率 <span class="${tone(d)}">${r > 0 ? "+" : ""}${r.toFixed(2)}%</span>`;
+});
 registerAction("inst-tab", (el) => { S.instTab = el.dataset.tab; save(); window.dispatchEvent(new CustomEvent("portfolios:changed")); });
 registerAction("scan-sort", (el) => { S.scanSort = el.dataset.sort; save(); window.dispatchEvent(new CustomEvent("portfolios:changed")); });
