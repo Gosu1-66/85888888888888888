@@ -59,7 +59,7 @@ const savedSet = load(SET_KEY, {}) || {};
 export const S = {
   data: migrateRaw(load(DATA_KEY, null) || load(OLD_DATA_KEY, null)),
   set: { ...DEFAULT_SET, ...savedSet, entries: { ...DEFAULT_SET.entries, ...(savedSet.entries || {}) }, risk: { ...DEFAULT_SET.risk, ...(savedSet.risk || {}) }, cloud: { ...DEFAULT_SET.cloud, ...(savedSet.cloud || {}) } },
-  quotes: {}, status: { binance: "skip", file: "fail", fileUpdated: null, fx: null }, file: null, fileAt: 0, logos: {},
+  quotes: {}, status: { binance: "skip", file: "fail", fileUpdated: null, fx: null }, file: null, fileAt: 0, logos: {}, cryptoLogos: {},
   market: null, marketAt: 0,
   lastRefresh: 0, refreshing: false,
   tab: "首頁", q: "", sel: null, tech: null, techReq: 0, hover: -1, open: new Set(),
