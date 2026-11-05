@@ -7,7 +7,7 @@ import { indices, institutions, instRank, greedIndex, marketTone } from "./marke
 import { palette, drawDonut } from "./charts.js";
 
 const ENTRY_META = {
-  radar: { label: "雷達", icon: "📡", act: "scroll-to", target: "radar" },
+  radar: { label: "雷達", icon: "📡", href: "#/analysis" },
   inst: { label: "法人排名", icon: "🏦", href: "#/analysis" },
   daytrade: { label: "當沖", icon: "⚡", href: "#/analysis" },
   scan: { label: "選股", icon: "🔍", href: "#/analysis" },
@@ -27,11 +27,12 @@ function heroCards() {
   const top = (idxs.find((i) => i.code === "t00") || idxs[0]);
   const two = idxs.find((i) => i.code === "o00");
   const cards = [];
-  const card = (name, price, chg, p) => `<div class="idx-card">
+  const card = (name, price, chg, p) => `<div class="idx-card compact">
     <div class="small muted">${esc(name)}</div>
-    <div class="num">${price != null ? fmt(price, 2) : "—"}</div>
-    <div class="num ${tone(chg)}">${chg != null ? (chg >= 0 ? "+" : "") + fmt(chg, 2) : "—"}</div>
-    <div class="num ${tone(p)}">${p != null ? pct(p) : "—"}</div>
+    <div class="row" style="justify-content:space-between;align-items:baseline;gap:8px">
+      <span class="num">${price != null ? fmt(price, 2) : "—"}</span>
+      <span class="num small ${tone(p)}">${p != null ? pct(p) : "—"}</span>
+    </div>
   </div>`;
   if (top) cards.push(card(top.name || "加權指數", top.price, top.change, top.changePct));
   if (two) cards.push(card(two.name || "櫃買指數", two.price, two.change, two.changePct));
@@ -102,24 +103,34 @@ function radar() {
   </section>`;
 }
 
-/* ── 熱門股 ── */
+/* ── 熱門股（一行一檔：代號名稱 / 價格漲跌 / 迷你走勢） ── */
+function sparkLine(key) {
+  const rows = S.file?.candles?.[key];
+  if (!rows || rows.length < 2) return `<svg class="spark" viewBox="0 0 64 26" preserveAspectRatio="none"></svg>`;
+  const cs = rows.slice(-40).map((r) => r[4]);
+  const min = Math.min(...cs), max = Math.max(...cs), rng = (max - min) || 1;
+  const pts = cs.map((c, i) => `${((i / (cs.length - 1)) * 62 + 1).toFixed(1)},${(24 - ((c - min) / rng) * 22).toFixed(1)}`).join(" ");
+  const up = cs[cs.length - 1] >= cs[0];
+  return `<svg class="spark" viewBox="0 0 64 26" preserveAspectRatio="none"><polyline points="${pts}" fill="none" stroke="${up ? "var(--up)" : "var(--down)"}" stroke-width="1.5" stroke-linecap="round"/></svg>`;
+}
+
 function hotStocks() {
-  const u = uni();
   return `<section class="card">
     <h2 class="h2">熱門股</h2>
-    <div class="index-cards">${HOT_STOCKS.map((h) => {
+    <div class="qrows">${HOT_STOCKS.map((h) => {
       const key = keyOf("台股", h.symbol);
       const q = S.quotes[key];
       const w = S.set.watch.includes(key);
-      return `<a class="idx-card quote" href="#/search?s=${encodeURIComponent(key)}" style="text-decoration:none;color:inherit">
-        <div class="row" style="justify-content:space-between;align-items:center">
-          <strong>${esc(h.symbol)}</strong>
-          ${w ? `<span class="badge live">已加自選</span>` : ""}
+      return `<a class="qrow" href="#/search?s=${encodeURIComponent(key)}">
+        <div class="qrow-id">
+          <span class="qrow-sym">${esc(h.symbol)}${w ? `<span class="dot"></span>` : ""}</span>
+          <span class="muted small">${esc(h.name)}</span>
         </div>
-        <div class="small muted">${esc(h.name)}</div>
-        <div class="num">${q ? fmt(q.price, 2) : "—"}</div>
-        <div class="num ${q ? tone(q.change) : ""}">${q ? pct(q.change) : "—"}</div>
-        <div class="small muted">${q ? badge(q) : "無報價（需排程）"}</div>
+        <div class="qrow-px">
+          <span class="num ${q ? tone(q.change) : ""}">${q ? fmt(q.price, 2) : "—"}</span>
+          <span class="small ${q ? tone(q.change) : "muted"}">${q ? pct(q.change) : "無報價"}</span>
+        </div>
+        <div class="qrow-spark">${sparkLine(key)}</div>
       </a>`;
     }).join("")}</div>
   </section>`;
@@ -199,7 +210,6 @@ export function viewHome() {
   return `${statusBanner()}
     ${heroCards()}
     ${entryGrid()}
-    ${radar()}
     ${instTop() ? `<section class="card"><h2 class="h2">盤後法人動向</h2>${instTop()}</section>` : ""}
     ${hotStocks()}
     ${watchTab()}
