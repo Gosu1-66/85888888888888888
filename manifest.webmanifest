@@ -1,6 +1,6 @@
 {
-  "name": "投資助手",
-  "short_name": "投資助手",
+  "name": "GU1 台股看盤",
+  "short_name": "GU1",
   "description": "台股看盤投資助手：自選股、投資組合、市場分析、技術指標、雲端同步（純前端 PWA）",
   "lang": "zh-TW",
   "start_url": "./",
