@@ -174,16 +174,18 @@ function watchTab() {
     .filter((x) => tab === "全部" || x.u.market === tab);
   const rows = list.length ? list.map(({ key, u }) => {
     const q = S.quotes[key];
-    return `<div class="list-item">
+    const sub = [u.board, q ? (q.source === "binance" ? "即時" : "延遲") : "無報價"].filter(Boolean).join(" · ");
+    return `<div class="wrow">
       ${stockLogo(key, u.name, u.symbol)}
-      <a href="#/search?s=${encodeURIComponent(key)}" style="text-decoration:none;color:inherit;flex:1;min-width:0">
-        <strong>${esc(u.symbol)}</strong> <span class="muted small">${esc(u.name)}</span>
-        ${u.board ? `<span class="tag mid">${esc(u.board)}</span>` : ""}
+      <a class="wrow-mid" href="#/search?s=${encodeURIComponent(key)}">
+        <div class="wrow-name"><strong>${esc(u.symbol)}</strong> <span class="muted">${esc(u.name)}</span></div>
+        <div class="wrow-sub muted">${esc(sub)}</div>
       </a>
-      <span class="num">${q ? fmt(q.price, 2) : "—"}</span>
-      <span class="num ${q ? tone(q.change) : ""}">${q ? pct(q.change) : "—"}</span>
-      ${q ? badge(q) : `<span class="badge none">無報價</span>`}
-      <button type="button" class="btn sm" data-act="toggle-watch" data-key="${esc(key)}">移除</button>
+      <div class="wrow-px">
+        <div class="num">${q ? fmt(q.price, 2) : "—"}</div>
+        <div class="num small ${q ? tone(q.change) : ""}">${q ? pct(q.change) : "—"}</div>
+      </div>
+      <button type="button" class="btn sm wrow-del" data-act="toggle-watch" data-key="${esc(key)}">移除</button>
     </div>`;
   }).join("") : `<div class="muted small empty">自選清單是空的。可在「熱門股」按 ＋ 或到搜索頁加入。</div>`;
   return `<section class="card" id="watchlist">
