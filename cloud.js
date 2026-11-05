@@ -296,7 +296,7 @@ registerAction("cloud-sync", () => syncNow());
 registerAction("cloud-logout", () => logout());
 registerAction("cloud-clear", () => {
   if (!confirm("清除雲端設定？本機資料保留，此裝置將回到本機模式。")) return;
-  S.set.cloud = { enabled: false, config: null, lastSync: null, user: null, error: null };
+  S.set.cloud = { enabled: false, cleared: true, config: null, lastSync: null, user: null, error: null };
   save(); toast("已回到本機模式");
   location.hash = "#/profile";
 });
