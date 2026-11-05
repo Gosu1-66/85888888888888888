@@ -15,7 +15,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Fetch prices (Yahoo)
+      - name: Fetch prices (Yahoo / Fugle)
+        env:
+          FUGLE_API_KEY: ${{ secrets.FUGLE_API_KEY }}
         run: node scripts/fetch-prices.mjs
       - name: Fetch market data (TWSE)
         run: node scripts/fetch-market.mjs
