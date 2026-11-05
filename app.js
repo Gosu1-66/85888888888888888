@@ -10,11 +10,17 @@ import { viewSearch, afterSearch } from "./search.js";
 import { viewPortfolios, afterPortfolios } from "./portfolios.js";
 import { viewProfile, afterProfile } from "./profile.js";
 import { viewCloud } from "./cloud.js";
+import { viewRadar, viewInst, viewDaytrade, viewScan, viewIndex } from "./tools.js";
 
 const VIEWS = {
   home: { view: viewHome, after: afterHome },
   analysis: { view: viewAnalysis, after: afterAnalysis },
   search: { view: viewSearch, after: afterSearch },
+  radar: { view: viewRadar, after: null },
+  inst: { view: viewInst, after: null },
+  daytrade: { view: viewDaytrade, after: null },
+  scan: { view: viewScan, after: null },
+  indexb: { view: viewIndex, after: null },
   portfolio: { view: viewPortfolios, after: afterPortfolios },
   profile: { view: viewProfile, after: afterProfile },
   cloud: { view: viewCloud, after: null },
