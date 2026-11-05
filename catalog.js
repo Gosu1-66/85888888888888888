@@ -63,10 +63,21 @@ const US_STOCKS = [
   ["TSM", "台積電 ADR"], ["VOO", "Vanguard S&P 500"], ["QQQ", "納斯達克100 ETF"], ["SPY", "標普500 ETF"],
 ].map(([symbol, name]) => ({ symbol, name, market: "美股", board: "", industry: "", themes: [] }));
 
-/* 加密貨幣 */
+/* 加密貨幣（幣安 USDT 交易對市值前 50，已排除穩定幣 USDT/USDC；報價由前端直連 Binance） */
 const CRYPTO = [
-  ["BTC", "比特幣"], ["ETH", "以太幣"], ["SOL", "Solana"], ["BNB", "幣安幣"],
-  ["XRP", "瑞波幣"], ["DOGE", "狗狗幣"], ["ADA", "艾達幣"],
+  ["BTC", "比特幣"], ["ETH", "以太幣"], ["BNB", "幣安幣"], ["SOL", "Solana"],
+  ["XRP", "瑞波幣"], ["DOGE", "狗狗幣"], ["ADA", "艾達幣"], ["TRX", "波場"],
+  ["LINK", "Chainlink"], ["AVAX", "Avalanche"], ["XLM", "恆星幣"], ["SUI", "Sui"],
+  ["LTC", "萊特幣"], ["BCH", "比特幣現金"], ["HBAR", "Hedera"], ["DOT", "Polkadot"],
+  ["SHIB", "柴犬幣"], ["UNI", "Uniswap"], ["AAVE", "Aave"], ["NEAR", "NEAR Protocol"],
+  ["APT", "Aptos"], ["ICP", "Internet Computer"], ["ETC", "以太經典"], ["POL", "Polygon"],
+  ["ARB", "Arbitrum"], ["OP", "Optimism"], ["FIL", "Filecoin"], ["INJ", "Injective"],
+  ["ATOM", "Cosmos"], ["TIA", "Celestia"], ["STX", "Stacks"], ["IMX", "Immutable"],
+  ["GRT", "The Graph"], ["RUNE", "THORChain"], ["ALGO", "Algorand"], ["SEI", "Sei"],
+  ["FET", "ASI Alliance"], ["RENDER", "Render"], ["JUP", "Jupiter"], ["PYTH", "Pyth Network"],
+  ["WLD", "Worldcoin"], ["ENA", "Ethena"], ["ONDO", "Ondo"], ["JTO", "Jito"],
+  ["THETA", "Theta"], ["PEPE", "Pepe"], ["TAO", "Bittensor"], ["LDO", "Lido DAO"],
+  ["BONK", "Bonk"], ["PENDLE", "Pendle"],
 ].map(([symbol, name]) => ({ symbol, name, market: "加密貨幣", board: "", industry: "", themes: [] }));
 
 /* 指數（Yahoo 代號原樣抓取，含日 K，可做技術分析） */
