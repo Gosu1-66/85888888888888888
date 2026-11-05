@@ -7,13 +7,13 @@ import { indices, institutions, instRank, greedIndex, marketTone } from "./marke
 import { palette, drawDonut } from "./charts.js";
 
 const ENTRY_META = {
-  radar: { label: "雷達", icon: "📡", href: "#/analysis" },
-  inst: { label: "法人排名", icon: "🏦", href: "#/analysis" },
-  daytrade: { label: "當沖", icon: "⚡", href: "#/analysis" },
-  scan: { label: "選股", icon: "🔍", href: "#/analysis" },
+  radar: { label: "雷達", icon: "📡", href: "#/radar" },
+  inst: { label: "法人排名", icon: "🏦", href: "#/inst" },
+  daytrade: { label: "當沖", icon: "⚡", href: "#/daytrade" },
+  scan: { label: "選股", icon: "🔍", href: "#/scan" },
   tools: { label: "工具", icon: "🧰", href: "#/portfolio" },
   watchlist: { label: "自選", icon: "⭐", act: "scroll-to", target: "watchlist" },
-  index: { label: "大盤", icon: "📈", href: "#/analysis" },
+  index: { label: "大盤", icon: "📈", href: "#/indexb" },
   custom: { label: "自訂", icon: "🎛️", href: "#/profile?f=entries" },
   cloud: { label: "雲端同步", icon: "☁️", href: "#/cloud" },
 };
