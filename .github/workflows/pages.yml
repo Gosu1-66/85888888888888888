@@ -1,10 +1,8 @@
-name: Update Market Data
+name: Update Market Data (manual)
 
+# 排程已集中在 market-data.yml，這裡只保留手動執行，避免兩個 workflow 重複跑。
 on:
-  schedule:
-    - cron: "45 5 * * *"   # 每日 13:45 (UTC+8) 盤中
-    - cron: "0 12 * * *"   # 每日 20:00 (UTC+8) 盤後
-  workflow_dispatch: {}     # 也可在 Actions 頁手動執行
+  workflow_dispatch: {}
 
 permissions:
   contents: write
