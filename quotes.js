@@ -52,6 +52,14 @@ export async function loadBinanceQuotes(symbols) {
   }
 }
 
+/** 讀取標的公司標誌映射；失敗回傳 {} */
+export async function loadLogos() {
+  try {
+    const d = await getJSON(`logos.json?t=${Date.now()}`);
+    return d && typeof d === "object" ? d : {};
+  } catch { return {}; }
+}
+
 /** 由排程檔組出報價（change = 漲跌幅百分比） */
 export function quotesFromFile(file) {
   const out = {};
