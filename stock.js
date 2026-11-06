@@ -3,7 +3,7 @@ import { $, esc, fmt, pct, tone, toast, registerAction } from "./ui.js";
 import { S, save, uni } from "./state.js";
 import { keyOf } from "./portfolio.js";
 import { buildSeries, rsi } from "./indicators.js";
-import { drawTechnical } from "./charts.js";
+import { mountCandle } from "./kline.js";
 import { stockLogo, sparkLine } from "./home.js";
 import { industryFlow, instRank, institutions, daytrade, etfMetrics, indices } from "./marketdata.js";
 
@@ -99,8 +99,10 @@ export function viewStock() {
       <span style="flex:1"></span>
       <span class="chip2" style="pointer-events:none">${cs.length ? cs.length + " 根" : "無 K 線"}</span>
     </div>
-    <canvas id="stk-chart"></canvas>
-    <div class="legend"><span><i style="background:var(--warn)"></i>MA5</span><span><i style="background:var(--blue)"></i>MA20</span><span><i style="background:var(--pink)"></i>MA60</span><span>成交量・RSI・MACD</span><span class="muted">拖曳平移・滾輪縮放</span></div>
+    <div class="lwc-ohlc" id="stk-ohlc"></div>
+    <div id="stk-main" class="lwc-main"></div>
+    <div id="stk-sub" class="lwc-sub"></div>
+    <div class="legend"><span><i style="background:var(--warn)"></i>MA5</span><span><i style="background:var(--blue)"></i>MA20</span><span><i style="background:var(--pink)"></i>MA60</span><span>成交量・RSI・MACD</span><span class="muted">拖曳平移・滾輪縮放・雙指縮放</span></div>
   </section>`;
 
   const tabs = `<div class="tabbar">${TABS.map((t) => `<button type="button" class="${t === tab ? "on" : ""}" data-act="stock-tab" data-tab="${t}">${t}</button>`).join("")}</div>`;
@@ -224,62 +226,56 @@ function panel(u, key, tab, sc, q, chgPct) {
   </section>`;
 }
 
-/* ── 繪圖（含十字線、平移、縮放） ── */
-let chartState = null;
+/* ── K 線：TradingView Lightweight Charts ── */
+let klineState = null;
+
+function pad(n) { return String(n).padStart(2, "0"); }
+function ohlcText(c, prev) {
+  if (!c) return "";
+  const d = new Date(c.t * 1000);
+  const chg = prev ? c.c - prev.c : null;
+  const pc = prev && prev.c ? (chg / prev.c) * 100 : null;
+  return `<b>${d.getFullYear()}/${pad(d.getMonth() + 1)}/${pad(d.getDate())}</b>
+    <span>開 ${fmt(c.o, 2)}</span><span>高 ${fmt(c.h, 2)}</span><span>低 ${fmt(c.l, 2)}</span>
+    <span class="${tone(chg)}">收 ${fmt(c.c, 2)}</span>
+    <span class="${tone(chg)}">${pc == null ? "" : (pc >= 0 ? "+" : "") + pc.toFixed(2) + "%"}</span>
+    <span class="muted">量 ${fmt(Math.round(c.v / 1000))} 張</span>`;
+}
 
 export function afterStock() {
   const key = decodeURIComponent((location.hash.split("/stock/")[1] || "").split("?")[0]);
   const cs = candleObjs(key);
-  const cv = $("#stk-chart");
-  if (!cv || cs.length < 5) { chartState = null; return; }
-  const data = buildSeries(cs);
-  const n = data.length;
-  const range = Math.min(n, Number(S.stkRange) || 126);
-  if (!chartState || chartState.key !== key || chartState.range !== range) {
-    chartState = { key, range, data, start: n - range, end: n, hover: -1, drag: null };
-  } else {
-    chartState.data = data;
-    chartState.end = Math.min(chartState.end, n);
-    chartState.start = Math.max(0, Math.min(chartState.start, chartState.end - 10));
+  const mainEl = $("#stk-main");
+  const subEl = $("#stk-sub");
+  const box = $("#stk-ohlc");
+  if (!mainEl || !subEl || cs.length < 5) return;
+  if (box) box.innerHTML = ohlcText(cs[cs.length - 1], cs[cs.length - 2]);
+
+  const range = Number(S.stkRange) || 126;
+  if (klineState && klineState.key === key) {
+    klineState.range = range;
+    if (klineState.chart) klineState.chart.setBars(range);
+    return;
   }
-  const H = 420;
-  const draw = () => { chartState.hit = drawTechnical(cv, chartState.data, { start: chartState.start, end: chartState.end, hover: chartState.hover }, H); };
-  draw();
-
-  cv.onmousemove = (ev) => {
-    const hit = chartState.hit;
-    if (chartState.drag) {
-      const span = chartState.drag.end - chartState.drag.start;
-      const pxPerIdx = (cv.clientWidth - 64) / span;
-      const shift = Math.round((ev.clientX - chartState.drag.x) / Math.max(1, pxPerIdx));
-      let s0 = chartState.drag.start - shift, e0 = chartState.drag.end - shift;
-      if (s0 < 0) { e0 -= s0; s0 = 0; }
-      if (e0 > chartState.data.length) { s0 -= e0 - chartState.data.length; e0 = chartState.data.length; }
-      chartState.start = Math.max(0, s0); chartState.end = e0;
-      draw(); return;
-    }
-    if (!hit) return;
-    chartState.hover = hit.indexAt(ev.clientX);
-    draw();
-  };
-  cv.onmouseleave = () => { chartState.hover = -1; draw(); };
-  cv.onmousedown = (ev) => { chartState.drag = { x: ev.clientX, start: chartState.start, end: chartState.end }; cv.style.cursor = "grabbing"; };
-  cv.onmouseup = () => { chartState.drag = null; cv.style.cursor = ""; };
-  cv.onwheel = (ev) => {
-    ev.preventDefault();
-    const hit = chartState.hit;
-    if (!hit) return;
-    const span = chartState.end - chartState.start;
-    const idx = hit.indexAt(ev.clientX);
-    const ns = Math.max(15, Math.min(chartState.data.length, Math.round(span * (ev.deltaY > 0 ? 1.25 : 0.8))));
-    let s0 = Math.round(idx - (idx - chartState.start) * (ns / span));
-    s0 = Math.max(0, Math.min(chartState.data.length - ns, s0));
-    chartState.start = s0; chartState.end = s0 + ns; chartState.hover = idx;
-    draw();
-  };
-  chartState.redraw = draw;   // 供 module 級觸控委派使用
+  if (klineState) { try { klineState.chart && klineState.chart.destroy(); } catch (e) { /* ignore */ } klineState = null; }
+  if (!window.LightweightCharts) {
+    mainEl.innerHTML = '<p class="small muted" style="padding:20px 4px">圖表元件載入中，請稍後重新整理。</p>';
+    return;
+  }
+  const narrow = (mainEl.clientWidth || window.innerWidth) < 520;
+  const chart = mountCandle(mainEl, subEl, cs, {
+    range,
+    mainHeight: narrow ? 250 : 320,
+    subHeight: narrow ? 110 : 132,
+    onHover: (d, time) => {
+      if (!box) return;
+      if (!d || !time) { box.innerHTML = ohlcText(cs[cs.length - 1], cs[cs.length - 2]); return; }
+      const raw = cs.find((c) => c.t === time);
+      box.innerHTML = ohlcText(raw || { t: time, o: d.open, h: d.high, l: d.low, c: d.close, v: 0 }, cs[cs.length - 2]);
+    },
+  });
+  klineState = { key, range, chart };
 }
-
 /* ── actions ── */
 registerAction("stk-range", (el) => {
   S.stkRange = Number(el.dataset.range) || 126;
@@ -289,54 +285,4 @@ registerAction("stk-range", (el) => {
 registerAction("stock-tab", (el) => {
   S.stockTab = el.dataset.tab;
   window.dispatchEvent(new CustomEvent("portfolios:changed"));
-});
-
-/* ── 觸控（module 級委派：canvas 重繪後仍有效） ── */
-function tChartEl(ev) {
-  const el = ev.target;
-  return el && el.id === "stk-chart" ? el : null;
-}
-document.addEventListener("touchstart", (ev) => {
-  const cv = tChartEl(ev);
-  if (!cv || !chartState || !chartState.hit) return;
-  if (ev.touches.length === 1) {
-    chartState.tStart = { x: ev.touches[0].clientX, start: chartState.start, end: chartState.end };
-    chartState.tPinch = null;
-    chartState.hover = chartState.hit.indexAt(ev.touches[0].clientX);
-    chartState.redraw && chartState.redraw();
-  } else if (ev.touches.length === 2) {
-    chartState.tPinch = { d: Math.abs(ev.touches[0].clientX - ev.touches[1].clientX) || 1, start: chartState.start, end: chartState.end };
-    chartState.tStart = null;
-  }
-}, { passive: false });
-document.addEventListener("touchmove", (ev) => {
-  const cv = tChartEl(ev);
-  if (!cv || !chartState || !chartState.hit) return;
-  if (ev.cancelable) ev.preventDefault();
-  const hit = chartState.hit;
-  if (ev.touches.length === 1 && chartState.tStart) {
-    const st = chartState.tStart;
-    const span = st.end - st.start;
-    const pxPerIdx = (cv.clientWidth - 64) / Math.max(1, span);
-    const shift = Math.round((ev.touches[0].clientX - st.x) / Math.max(1, pxPerIdx));
-    let s0 = st.start - shift, e0 = st.end - shift;
-    if (s0 < 0) { e0 -= s0; s0 = 0; }
-    if (e0 > chartState.data.length) { s0 -= e0 - chartState.data.length; e0 = chartState.data.length; }
-    chartState.start = Math.max(0, s0); chartState.end = e0;
-    chartState.hover = hit.indexAt(ev.touches[0].clientX);
-    chartState.redraw && chartState.redraw();
-  } else if (ev.touches.length === 2 && chartState.tPinch) {
-    const tp = chartState.tPinch;
-    const d = Math.abs(ev.touches[0].clientX - ev.touches[1].clientX);
-    const span0 = tp.end - tp.start;
-    const ns = Math.max(15, Math.min(chartState.data.length, Math.round(span0 * (tp.d / Math.max(1, d)))));
-    const mid = Math.round((tp.start + tp.end) / 2);
-    let s0 = Math.max(0, Math.min(chartState.data.length - ns, Math.round(mid - ns / 2)));
-    chartState.start = s0; chartState.end = s0 + ns; chartState.hover = -1;
-    chartState.redraw && chartState.redraw();
-  }
-}, { passive: false });
-document.addEventListener("touchend", (ev) => {
-  if (!tChartEl(ev) || !chartState) return;
-  chartState.tStart = null; chartState.tPinch = null;
 });
