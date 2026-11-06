@@ -17,7 +17,7 @@ function searchGroups() {
     ["自選", S.set.watch.map((k) => u.find((x) => x.key === k)).filter(Boolean)],
     ["台股", hits.filter((x) => x.market === "台股")],
     ["美股", hits.filter((x) => x.market === "美股")],
-    ["加密貨幣", hits.filter((x) => x.market === "加密貨幣")],
+    ["加密貨幣", hits.filter((x) => x.market === "加密貨幣" && S.quotes[x.key] && typeof S.quotes[x.key].price === "number")],
     ["指數", hits.filter((x) => x.market === "指數")],
   ].filter(([, arr]) => arr.length);
   // 有搜尋詞時只按市場分組，避免命中結果同時出現在「自選」而重複
