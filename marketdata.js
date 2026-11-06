@@ -17,6 +17,16 @@ export async function refreshMarket() {
     const j = await r.json();
     S.market = j && typeof j === "object" ? j : null;
     S.marketAt = Date.now();
+    if (S.market && !S.market.margin) {
+      // 信用交易由獨立排程產生（margin.json），抓不到就留空由 view 降級
+      try {
+        const rm = await fetch(`margin.json?t=${Date.now()}`, { cache: "no-store", signal: AbortSignal.timeout(6000) });
+        if (rm.ok) {
+          const jm = await rm.json();
+          if (jm && typeof jm === "object") S.market.margin = jm;
+        }
+      } catch {}
+    }
   } catch { S.market = null; }
 }
 
