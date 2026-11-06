@@ -372,12 +372,12 @@ export function viewAnalysis() {
   const idxBig = idxs.map((i, n) => {
     const nm = String(i.name).replace("發行量加權股價指數", "加權指數");
     const spark = n === 0 ? sparkLine(keyOf("指數", "^TWII"), 120, 30) : "";
-    return `<div class="idx-big">
+    return `<a class="idx-big" href="#/indexb">
       <div class="ib-nm">${esc(nm)}</div>
       <div class="ib-px ${tone(i.changePct)}">${i.price != null ? fmt(i.price, 0) : "—"}</div>
       <div class="ib-dl"><span class="${tone(i.change)}">${i.change != null ? (i.change > 0 ? "+" : "") + fmt(i.change, 0) : "—"}</span><em>｜</em><b class="${tone(i.changePct)}">${i.changePct != null ? pct(i.changePct) : "—"}</b></div>
       <div class="ib-sp">${spark}</div>
-    </div>`;
+    </a>`;
   }).join("");
 
   const breadthCard = b ? `<section class="xcard half">
