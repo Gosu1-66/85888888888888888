@@ -263,7 +263,7 @@ export function viewIndex() {
   const futHtml = (cat === "all" ? futRows : []).map((f) => `<div class="rrow idx-row">
       <div class="rmid"><div class="nm">${esc(f.nm)} <span style="font-size:12px">${f.icon}</span></div><div class="sub">${esc(f.sub)}</div></div>
       <div class="rpx"><div class="p ${tone(f.pct)}" style="font-size:16px">${px(f.price)}</div><div class="d ${tone(f.pct)}">${f.change != null ? (f.change > 0 ? "+" : "") + fmt(f.change, 0) : "—"}${f.pct != null ? " · " + pct(f.pct) : ""}</div></div>
-      <div class="isp"></div>
+      <div class="isp"><span class="small muted" style="display:block;text-align:right;line-height:1.3">成交<br>${f.vol ? fmt(f.vol, 0) + " 口" : "—"}</span></div>
     </div>`).join("");
   const totalRows = futHtml ? futRows.length + rows.length : rows.length;
 
