@@ -79,6 +79,8 @@ function guardStockRoute() {
   if (!S.file) return true;                     // 資料還沒載完，先放行
   const key = decodeURIComponent(m[1]);
   if (!key.includes(":")) return true;
+  // 加密貨幣的 K 線由前端直連 Binance 取得，不看排程檔
+  if (key.startsWith("加密貨幣:")) return !!(S.quotes?.[key] && typeof S.quotes[key].price === "number");
   const bars = (S.file?.candles?.[key] || []).length;
   const q = S.quotes?.[key];
   if (bars >= MIN_STOCK_BARS) return true;
