@@ -93,7 +93,7 @@ export function afterIndexDetail() {
   if (!t || !mainEl || !subEl) return;
   const range = Number(S.idxRange) || 126;
 
-  if (idxState && idxState.id === id) {
+  if (idxState && idxState.id === id && idxState.el === mainEl && mainEl.isConnected) {
     idxState.range = range;
     idxState.chart && idxState.chart.setBars(range);
     return;
@@ -117,7 +117,7 @@ export function afterIndexDetail() {
       height: narrow ? 240 : 300, intraday: true, range,
       onHover: (d) => { /* 價格由外部卡片顯示 */ },
     });
-    idxState = { id, range, chart };
+    idxState = { id, range, chart, el: mainEl };
     return;
   }
 
@@ -134,14 +134,14 @@ export function afterIndexDetail() {
       },
     });
     if (box) box.innerHTML = ohlcLine(t.candles[t.candles.length - 1], t.candles[t.candles.length - 2]);
-    idxState = { id, range, chart };
+    idxState = { id, range, chart, el: mainEl };
     return;
   }
 
   const hist = t.hist || [];
   if (hist.length < 2) return;
   const chart = mountLine(mainEl, hist, { height: narrow ? 240 : 300, range });
-  idxState = { id, range, chart };
+  idxState = { id, range, chart, el: mainEl };
 }
 
 function ohlcLine(c, prev) {
