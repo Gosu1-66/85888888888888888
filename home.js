@@ -15,9 +15,9 @@ export function stockLogo(key, name, sym, cls = "qrow-logo") {
   const ch = clean.slice(0, 1) || String(sym).slice(0, 1);
   const fallback = `<span class="lg-char" style="color:#20262e">${esc(ch)}</span>`;
   const cid = S.cryptoLogos?.[String(sym).toUpperCase()];
-  if (cid) return `<span class="${cls}" style="background:#fff"><img src="${cid}" alt="" onerror="this.remove()">${fallback}</span>`;
+  if (cid) return `<span class="${cls}" style="background:#fff"><i class="logo-bg" style="background-image:url('${cid}')"></i>${fallback}</span>`;
   const id = S.logos?.[key];
-  if (id) return `<span class="${cls}" style="background:#fff"><img src="https://s3-symbol-logo.tradingview.com/${encodeURIComponent(id)}--big.svg" alt="" onerror="this.remove()">${fallback}</span>`;
+  if (id) return `<span class="${cls}" style="background:#fff"><i class="logo-bg" style="background-image:url('https://s3-symbol-logo.tradingview.com/${encodeURIComponent(id)}--big.svg')"></i>${fallback}</span>`;
   return `<span class="${cls}" style="background:hsl(${h} 38% 20%);border-color:hsl(${h} 45% 34%)">${fallback}</span>`;
 }
 
