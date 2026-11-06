@@ -48,6 +48,20 @@ export const industryFlow = () => S.market?.industry || [];
 export const industryEst = () => S.market?.industryEst || {};
 export const daytrade = () => S.market?.daytrade || null;
 export const margin = () => S.market?.margin || null;
+
+/* ── 可點判定：要有報價、且至少 60 根日 K ── */
+export function hasQuote(code, market = "台股") {
+  const key = keyOf(market, code);
+  const q = S.quotes?.[key];
+  return !!(q && typeof q.price === "number");
+}
+export function tradeable(code, market = "台股") {
+  const key = keyOf(market, code);
+  if (!hasQuote(code, market)) return false;
+  const cs = S.file?.candles?.[key] || [];
+  return cs.length >= 60;
+}
+export const MIN_BARS = 60;
 // K 線統一為物件（prices.json 內存陣列 [t,o,h,l,c,v]）
 const candleRows = (key) => (S.file?.candles?.[key] || []).map((r) => (Array.isArray(r) ? { t: r[0], o: r[1], h: r[2], l: r[3], c: r[4], v: r[5] } : r));
 export const indexCandles = () => candleRows(keyOf("指數", "^TWII"));
