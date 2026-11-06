@@ -475,3 +475,12 @@ canvas#stk-chart { border-radius: 10px; }
   .idxv-px { font-size: 26px; }
   .idxv-sub { text-align: left; }
 }
+/* ── Lightweight Charts 容器（v3-15） ── */
+.lwc-main { width: 100%; border-radius: 10px; }
+.lwc-sub { width: 100%; margin-top: 4px; }
+.lwc-ohlc { font-family: var(--mono); font-size: 11px; color: #8b939e; display: flex; flex-wrap: wrap; gap: 8px; padding: 2px 2px 6px; line-height: 1.4; }
+.lwc-ohlc b { color: #c9d1d9; font-weight: 600; }
+#stk-main, #idxv-main { min-height: 240px; }
+#stk-sub { min-height: 100px; }
+.idx-row.static { cursor: default; }
+.idx-row.static .go { display: none; }
