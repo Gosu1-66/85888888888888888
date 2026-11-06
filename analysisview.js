@@ -328,18 +328,27 @@ export function viewAnalysis() {
     const rows = all.filter((u) => u.market === "台股").slice(0, 4)
       .concat(all.filter((u) => u.market !== "台股").slice(0, 2));
     if (!rows.length) return `<p class="small muted">尚無報價資料</p>`;
-    return rows.map((u) => {
-      const q = S.quotes[u.key], up = (q.change || 0) >= 0;
-      const w = Math.abs(q.change || 0);
-      const bg = up ? `rgba(255,77,79,${0.14 + Math.min(w, 6) / 6 * 0.35})` : `rgba(36,194,111,${0.14 + Math.min(w, 6) / 6 * 0.35})`;
-      return `<a href="#/stock/${encodeURIComponent(u.key)}" style="flex:1 1 46%;min-width:120px;display:flex;gap:8px;align-items:center;padding:8px 9px;border-radius:12px;background:${bg};text-decoration:none;color:#fff">
-        <span class="logo" style="width:26px;height:26px;flex:none">${stockLogo(u.key, u.name, u.symbol, "logo")}</span>
-        <span style="min-width:0;flex:1">
-          <div class="nm" style="font-size:12.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(u.name)}</div>
-          <div style="font-family:var(--mono);font-size:11px;margin-top:2px" class="${tone(q.change)}">${q.change != null ? pct(q.change) : "—"}</div>
-        </span>
+    const wOf = (u) => Math.abs(S.quotes[u.key].change || 0) || 0.3;
+    const gsum = rows.reduce((s, u) => s + wOf(u), 0) || 1;
+    const maxW = Math.max(...rows.map(wOf), 0.3);
+    const hicon = (u) => {
+      const cid = S.cryptoLogos?.[String(u.symbol).toUpperCase()];
+      if (cid) return `<img class="hicon" src="${cid}" alt="" loading="lazy" onerror="this.style.display='none'">`;
+      const id = S.logos?.[u.key];
+      if (id) return `<img class="hicon" src="https://s3-symbol-logo.tradingview.com/${encodeURIComponent(id)}--big.svg" alt="" loading="lazy" onerror="this.style.display='none'">`;
+      return `<span class="hicon-txt">${esc(String(u.name).trim().slice(0, 1))}</span>`;
+    };
+    return `<div style="display:flex;gap:2px;height:104px;border-radius:8px;overflow:hidden">${rows.map((u) => {
+      const q = S.quotes[u.key], w = wOf(u);
+      const inten = (0.30 + (w / maxW) * 0.52).toFixed(2);
+      const up = (q.change || 0) >= 0;
+      const bg = up ? `rgba(226,58,58,${inten})` : `rgba(26,150,105,${inten})`;
+      return `<a href="#/stock/${encodeURIComponent(u.key)}" style="flex:0 0 calc(${((w / gsum) * 100).toFixed(1)}% - 2px);min-width:0;background:${bg};padding:7px;display:flex;flex-direction:column;gap:3px;text-decoration:none;color:#fff;overflow:hidden">
+        ${hicon(u)}
+        <div style="font-size:11px;font-weight:700;line-height:1.15;margin-top:auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(u.name)}</div>
+        <div style="font-family:var(--mono);font-size:10.5px;opacity:.95">${q.change != null ? pct(q.change) : "—"}</div>
       </a>`;
-    }).join("");
+    }).join("")}</div>`;
   })();
 
   const gParts = g ? g.parts.map((p) => `<div class="rrow" style="grid-template-columns:minmax(0,1fr) auto"><div class="rmid"><div class="nm">${esc(p.label)}</div></div><div class="rpx"><span class="small">${esc(p.text)}</span></div></div>`).join("") : "";
