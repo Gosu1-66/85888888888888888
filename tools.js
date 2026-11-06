@@ -114,7 +114,7 @@ export function viewInst() {
   const tab = S.instTab || "foreign";
   const tabs = [["foreign", "外資"], ["trust", "投信"], ["dealer", "自營商"]];
   const keyOfType = tab === "foreign" ? "外資" : tab === "trust" ? "投信" : "自營商";
-  const arr = (rank[tab] || []).slice().sort((a, b) => b.net - a.net);
+  const arr = (rank[tab] || []).filter((x) => canCode(x.code)).slice().sort((a, b) => b.net - a.net);
   const top = arr.slice(0, 25);
   const bot = arr.slice(-15).reverse();
   const row = (x, i) => {
