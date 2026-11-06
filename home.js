@@ -13,11 +13,11 @@ export function stockLogo(key, name, sym, cls = "qrow-logo") {
   for (const c of String(sym)) h = (h * 31 + c.charCodeAt(0)) % 360;
   const clean = String(name || sym).replace(/[^\u4e00-\u9fa5A-Za-z0-9]/g, "");
   const ch = clean.slice(0, 1) || String(sym).slice(0, 1);
-  const fallback = `<span class="lg-char" style="color:hsl(${h} 72% 74%)">${esc(ch)}</span>`;
+  const fallback = `<span class="lg-char" style="color:#20262e">${esc(ch)}</span>`;
   const cid = S.cryptoLogos?.[String(sym).toUpperCase()];
-  if (cid) return `<span class="${cls}" style="background:#fff"><img src="${cid}" alt="" loading="lazy" onerror="this.remove()">${fallback}</span>`;
+  if (cid) return `<span class="${cls}" style="background:#fff"><img src="${cid}" alt="" onerror="this.remove()">${fallback}</span>`;
   const id = S.logos?.[key];
-  if (id) return `<span class="${cls}" style="background:#fff"><img src="https://s3-symbol-logo.tradingview.com/${encodeURIComponent(id)}--big.svg" alt="" loading="lazy" onerror="this.remove()">${fallback}</span>`;
+  if (id) return `<span class="${cls}" style="background:#fff"><img src="https://s3-symbol-logo.tradingview.com/${encodeURIComponent(id)}--big.svg" alt="" onerror="this.remove()">${fallback}</span>`;
   return `<span class="${cls}" style="background:hsl(${h} 38% 20%);border-color:hsl(${h} 45% 34%)">${fallback}</span>`;
 }
 
