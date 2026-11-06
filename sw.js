@@ -1,5 +1,5 @@
 // sw.js — Service Worker：程式碼/資料採網路優先（部署即時生效），圖片等資源快取優先。
-const VERSION = "gosu-v3-2";
+const VERSION = "gosu-v3-3";
 const SHELL = [
   "./",
   "index.html",
@@ -11,7 +11,7 @@ const SHELL = [
   "manifest.webmanifest",
   "icon-180.png", "icon-192.png", "icon-512.png",
 ];
-const DATA = ["prices.json", "market.json"];
+const DATA = ["prices.json", "market.json", "margin.json"];
 
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(VERSION).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
