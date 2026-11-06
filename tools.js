@@ -252,7 +252,9 @@ export function viewIndex() {
   const dateTxt = S.market?.date ? S.market.date.slice(4, 6) + "/" + S.market.date.slice(6, 8) : "";
   const cat = S.idxCat || "all";
   const hero = list.find((i) => i.code === "t00") || list[0];
-  const rows = list.filter((i) => cat === "all" || idxGroupOf(i.name) === cat);
+  /* 「重要指數」只放參考 App 的那 6 項：台指期盤後／台指期／加權／櫃買／半導體／金融保險 */
+  const CORE_IDX = ["t00", "o00", "t24", "t17"];
+  const rows = list.filter((i) => (cat === "all" ? CORE_IDX.includes(String(i.code || "").slice(0, 3)) : idxGroupOf(i.name) === cat));
   const px = (v) => (v == null ? "—" : fmt(v, v >= 1000 ? 0 : 2));
 
   /* 台指期（日盤／夜盤），排在「重要指數」清單最前面，對齊參考 App */
@@ -284,7 +286,7 @@ export function viewIndex() {
     </div>` : `<p class="small muted">指數資料更新中</p>`);
 
   const cats = IDX_GROUP.map(([k, label]) => {
-    const n = k === "all" ? list.length + futRows.length : list.filter((i) => idxGroupOf(i.name) === k).length;
+    const n = k === "all" ? rows.filter((i) => CORE_IDX.includes(String(i.code || "").slice(0, 3))).length + futRows.length : list.filter((i) => idxGroupOf(i.name) === k).length;
     if (k !== "all" && !n) return "";
     return `<button class="ana-tab${cat === k ? " on" : ""}" data-act="idx-cat" data-cat="${k}">${label}${n ? `<sup>${n}</sup>` : ""}</button>`;
   }).join("");
