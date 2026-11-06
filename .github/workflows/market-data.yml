@@ -23,6 +23,9 @@ jobs:
         run: node scripts/fetch-prices.mjs
       - name: Fetch market data (TWSE)
         run: node scripts/fetch-market.mjs
+      - name: Fetch index history (TWSE MI_INDEX)
+        continue-on-error: true
+        run: node scripts/fetch-index-history.mjs
       - name: Fetch logos (TradingView)
         continue-on-error: true
         run: node scripts/fetch-logos.mjs
@@ -33,7 +36,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A prices.json market.json logos.json crypto-logos.json
+          git add -A prices.json market.json logos.json crypto-logos.json index-history.json
           if git diff --cached --quiet; then
             echo "no data changes"
           else
