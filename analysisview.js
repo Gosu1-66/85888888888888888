@@ -410,12 +410,13 @@ export function viewAnalysis() {
       <div class="icols">${instCol("外資", fNet)}${instCol("投信", tNet)}${instCol("自營商", dNet)}</div>
     </section>`;
 
+  const indAllZero = !ind.length || ind.every((x) => !(x.totalNet || 0));
   const industryBlock = `<section class="xcard">
       <div class="sec-h"><span class="ico">🏭</span><span class="tt">法人產業資金</span><span class="sp"></span><span class="date-chip">${esc(dateTxt)}</span></div>
-      <div class="two-col">
+      ${indAllZero ? `<p class="small muted">產業資金明細尚未更新（TWSE 個股法人資料未發布），稍後排程會自動補上。</p>` : `<div class="two-col">
         <div><div class="mini-chip up" style="margin-bottom:8px;display:inline-block">買超</div>${buy.slice(0, 3).map((x) => flowRow(x, 1)).join("") || `<p class="small muted">尚無</p>`}</div>
         <div><div class="mini-chip down" style="margin-bottom:8px;display:inline-block">賣超</div>${sell.slice(0, 3).map((x) => flowRow(x, -1)).join("") || `<p class="small muted">尚無</p>`}</div>
-      </div>
+      </div>`}
     </section>`;
 
   const heatBlock = `<section class="xcard">
