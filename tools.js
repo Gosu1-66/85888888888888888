@@ -294,13 +294,16 @@ export function viewIndex() {
 
   const listRows = rows.map((i) => {
     const code = String(i.code || "").slice(0, 3);
-    const href = "#/indexv/" + encodeURIComponent(code);
-    return `<a class="rrow idx-row" href="${href}">
-      <div class="rmid"><div class="nm">${esc(idxName(i))}</div><div class="sub">${esc(idxLabel(i.code))}</div></div>
+    const hist = S.idxHist?.[code];
+    const canOpen = code === "t00" ? true : !!(hist && hist.length > 1);
+    const tag = canOpen ? "a" : "div";
+    const href = canOpen ? ` href="#/indexv/${encodeURIComponent(code)}"` : "";
+    return `<${tag} class="rrow idx-row${canOpen ? "" : " static"}"${href}>
+      <div class="rmid"><div class="nm">${esc(idxName(i))}</div><div class="sub">${esc(idxLabel(i.code))}${canOpen ? "" : " · 歷史序列建置中"}</div></div>
       <div class="rpx"><div class="p ${tone(i.changePct)}" style="font-size:16px">${px(i.price)}</div><div class="d ${tone(i.changePct)}">${i.changePct != null ? pct(i.changePct) : "—"}</div></div>
       <div class="isp">${i.code === "t00" ? sparkLine(keyOf("指數", "^TWII"), 76, 24) : `<span class="small muted" style="display:block;text-align:right;line-height:1.3">前收<br>${i.prev ? fmt(i.prev, 2) : "—"}</span>`}</div>
-      <span class="go">›</span>
-    </a>`;
+      <span class="go">${canOpen ? "›" : ""}</span>
+    </${tag}>`;
   }).join("");
 
   return `<section class="xcard">
