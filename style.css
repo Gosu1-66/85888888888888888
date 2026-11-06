@@ -1,7 +1,7 @@
 :root {
-  --bg: #0e1319; --card: #151c25; --card2: #1b2430; --border: #2a3441; --fg: #e8edf3; --muted: #93a0b0;
-  --primary: #3fd9b5; --primary-fg: #0e1319; --up: #ef5a56; --down: #4cc47f; --warn: #e6c04a; --blue: #5aa6f5; --pink: #d86bd0; --orange: #e8864a;
-  --radius: 12px; --nav-h: 58px;
+  --bg: #0a0b0d; --card: #141619; --card2: #1b1e22; --border: #26292e; --fg: #eef1f4; --muted: #8b939e;
+  --primary: #d9b16a; --primary-fg: #12100a; --up: #ff4d4f; --down: #24c26f; --warn: #e8c877; --blue: #5aa6f5; --pink: #d86bd0; --orange: #e8864a;
+  --gold: #d9b16a; --gold2: #f0cf8e; --radius: 18px; --nav-h: 60px;
   --sans: -apple-system, BlinkMacSystemFont, "PingFang TC", "Microsoft JhengHei", "Noto Sans TC", system-ui, sans-serif;
   --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
 }
@@ -230,3 +230,132 @@ a.idx-card.quote { display: block; }
 .srow-px { text-align: right; white-space: nowrap; }
 .srow-px .num { font-size: 15px; line-height: 1.3; }
 .srow-add { padding: 5px 6px; font-size: 12px; white-space: nowrap; }
+
+/* ============================================================
+   v3：對齊參考 App（股市智投）— 黑金、跑馬燈、卡片列表、四頁導覽
+   ============================================================ */
+body { background: #0a0b0d; }
+#app { padding-top: 0; }
+main { padding: 8px 12px calc(var(--nav-h) + 26px + env(safe-area-inset-bottom)); max-width: 720px; margin: 0 auto; }
+
+/* 頂部列 */
+.topbar { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 10px; height: calc(56px + env(safe-area-inset-top)); padding: env(safe-area-inset-top) 14px 0; background: rgba(10,11,13,.92); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(255,255,255,.05); max-width: 720px; margin: 0 auto; }
+.topbar .tb-title { font-size: 18px; font-weight: 800; letter-spacing: .5px; display: flex; align-items: center; gap: 6px; }
+.topbar .tb-dot { width: 7px; height: 7px; border-radius: 50%; background: #3f8cff; }
+.topbar .tb-sp { flex: 1; }
+.tb-ico { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: var(--card2); border: 0; color: var(--fg); font-size: 15px; cursor: pointer; }
+.tb-ico.g { background: linear-gradient(145deg,#ff5a63,#d92e3c); color: #fff; font-weight: 800; font-size: 13px; }
+.topbar .back { background: none; border: 0; color: var(--fg); font-size: 22px; padding: 0 6px; cursor: pointer; }
+.topbar .tb-title.center { flex: 1; justify-content: center; font-size: 17px; }
+
+/* 指數跑馬燈 */
+.ticker { position: sticky; top: calc(56px + env(safe-area-inset-top)); z-index: 18; overflow: hidden; background: #0a0b0d; border-bottom: 1px solid rgba(255,255,255,.05); height: 34px; display: flex; align-items: center; max-width: 720px; margin: 0 auto; }
+.ticker-track { display: flex; gap: 26px; white-space: nowrap; line-height: 34px; animation: tkmove 26s linear infinite; padding-left: 14px; }
+@keyframes tkmove { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+.tk { font-size: 12.5px; color: var(--muted); }
+.tk b { color: var(--fg); font-family: var(--mono); font-weight: 700; margin: 0 4px; }
+.tk .up { color: var(--up); } .tk .down { color: var(--down); }
+
+/* 卡片外殼（參考 App 樣式） */
+.xcard { background: var(--card); border: 1px solid rgba(255,255,255,.055); border-radius: var(--radius); padding: 16px; margin-bottom: 12px; position: relative; }
+.xcard.tight { padding: 13px 14px; }
+.sec-h { display: flex; align-items: center; gap: 8px; margin: 2px 0 10px; }
+.sec-h .ico { width: 22px; height: 22px; border-radius: 7px; display: flex; align-items: center; justify-content: center; background: rgba(217,177,106,.13); color: var(--gold); font-size: 12px; }
+.sec-h .tt { font-size: 15px; font-weight: 700; }
+.sec-h .sp { flex: 1; }
+.sec-h .meta { font-size: 12px; color: var(--muted); font-family: var(--mono); }
+.sec-h .chev { color: #575e66; font-size: 16px; }
+
+/* 每日盤勢（AI 摘要卡） */
+.ai-card { background: linear-gradient(160deg, #16241d 0%, #131619 62%); border: 1px solid rgba(36,194,111,.16); border-radius: var(--radius); padding: 15px 16px; margin-bottom: 12px; cursor: pointer; }
+.ai-top { display: flex; align-items: center; gap: 8px; margin-bottom: 9px; }
+.ai-tag { font-size: 12px; font-weight: 800; padding: 2px 9px; border-radius: 6px; background: rgba(36,194,111,.16); color: #3fe08f; border: 1px solid rgba(36,194,111,.34); }
+.ai-tag.bull { background: rgba(255,77,79,.14); color: #ff7b7d; border-color: rgba(255,77,79,.32); }
+.ai-tag.mid { background: rgba(217,177,106,.14); color: var(--gold2); border-color: rgba(217,177,106,.32); }
+.ai-top .sp { flex: 1; }
+.ai-top .when { font-size: 11.5px; color: #79d6a6; font-family: var(--mono); }
+.ai-title { font-size: 15.5px; font-weight: 800; line-height: 1.45; margin: 0 0 8px; color: #fff; }
+.ai-body { font-size: 12.5px; line-height: 1.65; color: #a8b0ba; margin: 0 0 10px; max-height: 3.3em; overflow: hidden; }
+.ai-chips { display: flex; gap: 7px; flex-wrap: wrap; margin-bottom: 11px; }
+.ai-chip { font-size: 11.5px; padding: 3px 10px; border-radius: 99px; border: 1px solid rgba(255,255,255,.1); color: #cfd5dd; background: rgba(255,255,255,.03); }
+.ai-foot { font-size: 11.5px; color: #6f7883; border-top: 1px solid rgba(255,255,255,.06); padding-top: 9px; display: flex; align-items: center; }
+.ai-foot .sp { flex: 1; }
+
+/* 功能入口（橫滑） */
+.fn-row { display: flex; gap: 9px; overflow-x: auto; padding: 2px 2px 8px; margin: 0 -12px 8px; padding-left: 12px; padding-right: 12px; scrollbar-width: none; }
+.fn-row::-webkit-scrollbar { display: none; }
+.fncard { flex: none; width: 82px; min-height: 82px; border-radius: 14px; background: var(--card2); border: 1px solid rgba(255,255,255,.06); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; text-decoration: none; color: var(--fg); cursor: pointer; padding: 8px 4px; }
+.fncard .fic { font-size: 20px; line-height: 1; }
+.fncard .flb { font-size: 11.5px; color: #b9c0c9; text-align: center; line-height: 1.2; }
+.fncard.hot { border-color: rgba(217,177,106,.35); background: linear-gradient(160deg,#241f14,#191b1f); }
+.fncard.hot .flb { color: var(--gold2); }
+
+/* 空態卡（投資組合 / 自選） */
+.empty-card { background: var(--card); border: 1px solid rgba(255,255,255,.055); border-radius: var(--radius); padding: 30px 18px 26px; text-align: center; margin-bottom: 12px; }
+.empty-card .eico { width: 44px; height: 44px; border-radius: 14px; background: rgba(217,177,106,.1); border: 1px solid rgba(217,177,106,.22); display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; font-size: 19px; }
+.empty-card h3 { font-size: 15.5px; margin: 0 0 6px; font-weight: 800; }
+.empty-card p { font-size: 12.5px; color: var(--muted); margin: 0 0 16px; line-height: 1.6; }
+.goldbtn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: linear-gradient(180deg,#e6c07a,#c9a259); color: #17130a; border: 0; border-radius: 10px; padding: 10px 22px; font-size: 14px; font-weight: 800; cursor: pointer; }
+.goldbtn.wide { display: flex; width: 100%; }
+.ghostbtn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: rgba(255,255,255,.04); color: var(--fg); border: 1px solid rgba(255,255,255,.1); border-radius: 10px; padding: 9px 18px; font-size: 13.5px; font-weight: 700; cursor: pointer; }
+
+/* 列表行（行情/法人/選股通用） */
+.rrow { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; gap: 9px; align-items: center; padding: 11px 0; border-bottom: 1px solid rgba(255,255,255,.055); text-decoration: none; color: inherit; }
+.rrow.side { grid-template-columns: 34px minmax(0, 1fr) auto 64px; }
+.rrow.rank { grid-template-columns: 24px 34px minmax(0, 1fr) auto; }
+.rrow:last-child { border-bottom: 0; }
+.rk { width: 22px; height: 22px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 11.5px; font-weight: 800; font-family: var(--mono); background: var(--card2); color: #7f8893; }
+.rk.g1 { background: linear-gradient(150deg,#f3d38b,#c79f4d); color: #221a05; }
+.rk.g2 { background: linear-gradient(150deg,#d8dde3,#9aa2ab); color: #1a1d21; }
+.rk.g3 { background: linear-gradient(150deg,#d3a173,#a8764a); color: #221604; }
+.rmid { min-width: 0; }
+.rmid .nm { font-size: 14px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rmid .sub { font-size: 11.5px; color: var(--muted); margin-top: 2px; display: flex; gap: 6px; align-items: center; }
+.rpx { text-align: right; }
+.rpx .p { font-family: var(--mono); font-size: 16px; font-weight: 800; }
+.rpx .d { font-family: var(--mono); font-size: 11.5px; margin-top: 1px; }
+.rside { width: 60px; flex: none; }
+
+/* 個股頁 */
+.stk-head { display: flex; gap: 11px; align-items: center; padding: 12px 0 10px; }
+.stk-head .logo { width: 46px; height: 46px; border-radius: 50%; background: #fff; overflow: hidden; flex: none; display: flex; align-items: center; justify-content: center; }
+.stk-head .logo img { width: 100%; height: 100%; object-fit: contain; padding: 4px; }
+.stk-head .nm { font-size: 18px; font-weight: 800; line-height: 1.25; }
+.stk-head .cd { font-size: 12px; color: var(--muted); margin-top: 3px; font-family: var(--mono); }
+.stk-px { text-align: right; }
+.stk-px .p { font-family: var(--mono); font-size: 22px; font-weight: 800; }
+.stk-px .d { font-family: var(--mono); font-size: 12.5px; margin-top: 2px; }
+.stat4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; border-top: 1px solid rgba(255,255,255,.07); padding-top: 11px; margin-top: 6px; }
+.stat4 .k { font-size: 11px; color: var(--muted); }
+.stat4 .v { font-family: var(--mono); font-size: 13.5px; font-weight: 800; margin-top: 3px; }
+.tabbar { display: flex; gap: 4px; overflow-x: auto; border-bottom: 1px solid rgba(255,255,255,.07); margin: 4px -12px 12px; padding: 0 12px; scrollbar-width: none; position: sticky; top: calc(82px + env(safe-area-inset-top)); z-index: 18; background: rgba(10,11,13,.95); backdrop-filter: blur(10px); }
+.tabbar::-webkit-scrollbar { display: none; }
+.tabbar button { flex: none; background: none; border: 0; color: var(--muted); font-size: 13.5px; font-weight: 700; padding: 10px 12px 11px; cursor: pointer; border-bottom: 2px solid transparent; }
+.tabbar button.on { color: var(--gold2); border-bottom-color: var(--gold); }
+.chiprow { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0 12px; }
+.chip2 { font-size: 11.5px; padding: 4px 10px; border-radius: 99px; border: 1px solid rgba(255,255,255,.1); color: #cfd5dd; background: rgba(255,255,255,.03); }
+
+/* 評分環 */
+.score-row { display: flex; align-items: center; gap: 14px; }
+.ring { width: 92px; height: 92px; border-radius: 50%; flex: none; display: flex; align-items: center; justify-content: center; position: relative; }
+.ring::after { content: ""; position: absolute; inset: 9px; border-radius: 50%; background: var(--card); }
+.ring .n { position: relative; z-index: 1; font-family: var(--mono); font-size: 26px; font-weight: 800; }
+.sc-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; flex: 1; }
+.sc-grid .c { text-align: center; }
+.sc-grid .c .k { font-size: 11px; color: var(--muted); }
+.sc-grid .c .v { font-family: var(--mono); font-size: 16px; font-weight: 800; margin-top: 2px; }
+.barline { height: 4px; border-radius: 3px; background: rgba(255,255,255,.08); overflow: hidden; margin-top: 6px; }
+.barline > i { display: block; height: 100%; border-radius: 3px; background: linear-gradient(90deg,#c9a259,#f0cf8e); }
+
+/* 底部導覽（4 頁，參考 App 版） */
+nav.bottom-nav { grid-template-columns: repeat(4, 1fr); background: rgba(12,13,15,.96); backdrop-filter: blur(14px); border-top: 1px solid rgba(255,255,255,.07); height: auto; }
+.nav-btn { flex-direction: column; gap: 3px; font-size: 10.5px; min-height: 56px; padding-top: 6px; }
+.nav-btn .ni { font-size: 18px; line-height: 1; }
+.nav-btn.active { color: var(--gold2); }
+
+/* 桌面：置中窄欄，模擬手機比例 */
+@media (min-width: 900px) {
+  main { padding: 10px 12px calc(var(--nav-h) + 26px); }
+  nav.bottom-nav { left: 50%; transform: translateX(-50%); width: 720px; border-radius: 0; border-left: 1px solid rgba(255,255,255,.06); border-right: 1px solid rgba(255,255,255,.06); }
+  .ticker, .topbar { max-width: 720px; }
+}
