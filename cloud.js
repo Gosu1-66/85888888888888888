@@ -164,10 +164,10 @@ async function pull() {
 }
 
 /** 立即同步：先拉取比對時間，遠端較新則套用，否則上傳本機。 */
-export async function syncNow() {
+export async function syncNow(opts = {}) {
   const c = S.set.cloud || {};
-  if (!c.enabled || !configOk(c.config) || !c.user?.uid) { toast("請先完成雲端設定並登入"); return; }
-  toast("同步中…");
+  if (!c.enabled || !configOk(c.config) || !c.user?.uid) { if (!opts.silent) toast("請先完成雲端設定並登入"); return; }
+  if (!opts.silent) toast("同步中…");
   const remote = await pull();
   if (remote && remote.ts && remote.ts.seconds) {
     const rts = remote.ts.seconds * 1000;
@@ -179,10 +179,10 @@ export async function syncNow() {
         save(); toast("已從雲端還原資料");
       }
     } else {
-      const ok = await push(); if (ok) toast("已上傳本機資料到雲端"); else console.warn("[cloud] push failed");
+      const ok = await push(); if (ok && !opts.silent) toast("已上傳本機資料到雲端"); else if (!ok) console.warn("[cloud] push failed");
     }
   } else {
-    const ok = await push(); if (ok) toast("已上傳本機資料到雲端"); else console.warn("[cloud] push failed");
+    const ok = await push(); if (ok && !opts.silent) toast("已上傳本機資料到雲端"); else if (!ok) console.warn("[cloud] push failed");
   }
 }
 
@@ -198,7 +198,7 @@ export function initCloud() {
   if (!subs.includes(debouncedPush)) S.__hooks.save.push(debouncedPush);
   // 啟用且已登入時，啟動時自動拉取一次
   const c = S.set.cloud || {};
-  if (c.enabled && configOk(c.config) && c.user?.uid) setTimeout(syncNow, 1500);
+  if (c.enabled && configOk(c.config) && c.user?.uid) setTimeout(() => syncNow({ silent: true }), 1500);
   // 若剛從「跳轉登入」返回，這裡取回登入結果
   if (c.enabled && configOk(c.config)) setTimeout(handleRedirectResult, 600);
 }
