@@ -29,18 +29,20 @@ function searchRow(x) {
   const k = x.key, qq = S.quotes[k];
   const w = S.set.watch.includes(k);
   const logo = stockLogo(k, x.name, x.symbol, "logo-in");
-  return `<a class="rrow side" href="#/stock/${encodeURIComponent(k)}">
+  const bars = (S.file?.candles?.[k] || []).length;
+  const openable = !!(qq && typeof qq.price === "number" && bars >= 60);
+  return `<${openable ? `a href="#/stock/${encodeURIComponent(k)}"` : `div`} class="rrow side${openable ? "" : " static"}">
       <span class="logo">${logo}</span>
       <span class="rmid">
         <div class="nm">${esc(x.name)}</div>
-        <div class="sub">${esc(x.symbol)}${x.industry ? `<span class="mini-chip">${esc(x.industry)}</span>` : ""}${w ? `<span class="mini-chip gold">自選</span>` : ""}</div>
+        <div class="sub">${esc(x.symbol)}${x.industry ? `<span class="mini-chip">${esc(x.industry)}</span>` : ""}${w ? `<span class="mini-chip gold">自選</span>` : ""}${openable ? "" : `<span class="mini-chip">K 線建置中</span>`}</div>
       </span>
       <span class="rpx">
         <div class="p">${qq ? fmt(qq.price, 2) : "—"}</div>
         <div class="d ${qq ? tone(qq.change) : "muted"}">${qq ? pct(qq.change) : "—"}</div>
       </span>
       <span class="rside">${qq ? sparkLine(k, 64, 22) : ""}</span>
-    </a>`;
+    </${openable ? "a" : "div"}>`;
 }
 
 /** 搜尋結果區塊（可獨立重繪，輸入時不重建整個頁面） */
