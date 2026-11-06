@@ -48,10 +48,23 @@ function scoreOf(u, key) {
   const v20 = cs.length >= 20 ? cs.slice(-20).reduce((s, c) => s + c.v, 0) / 20 : 0;
   const vr = v20 && cs.length ? cs[cs.length - 1].v / v20 : 1;
   const mood = Math.max(0, Math.min(100, Math.round(50 + chg * 6 + (vr > 1.5 ? 8 : 0))));
-  const fund = null;   // 基本面資料未接（財報來源未串接）
+  const fund = null;   // 基本面分數另由 BWIBBU 估值資料呈現
   const arr = [chip, mood, tech].filter((x) => x != null);
   const score = arr.length ? Math.round(arr.reduce((a, b) => a + b, 0) / arr.length) : null;
-  return { chip, mood, tech, fund, score, chg, vr };
+  return { chip, mood, tech, fund, score, chg, vr, nets };
+}
+
+/* 有資料才顯示的頁籤（避免點進去是空白區塊） */
+const isEtfSym = (s) => /^00\d{3,4}[A-Z]?$/.test(String(s || "").toUpperCase());
+function availTabs(u, sc, cs) {
+  const nets = sc.nets || {};
+  const out = ["概覽"];
+  if (sc.tech != null || sc.chip != null) out.push("AI 研究");
+  if (isEtfSym(u.symbol) && cs.length >= 30) out.push("ETF");
+  if ((daytrade()?.list || []).some((x) => String(x.code) === String(u.symbol))) out.push("當沖");
+  if (Object.values(nets).some((v) => v != null)) out.push("法人");
+  if (nets.foreign != null && cs.length >= 30) out.push("主力");
+  return out;
 }
 
 /* ── 個股頁主體 ── */
@@ -65,9 +78,12 @@ export function viewStock() {
   const prev = chgPct != null ? q.price / (1 + chgPct / 100) : null;
   const chg = prev ? q.price - prev : null;
   const sc = scoreOf(u, key);
-  const vol = cs.length ? cs[cs.length - 1].v : null;
+  const vol = (q && q.vol) || (cs.length ? cs[cs.length - 1].v : null);
   const amt = vol && q ? vol * q.price : null;
-  const tab = S.stockTab || "概覽";
+  const avail = availTabs(u, sc, cs);
+  const tab = avail.includes(S.stockTab) ? S.stockTab : avail[0];
+  const fund = S.file?.fundamentals?.[String(u.symbol)] || null;
+  const hasFund = !!(fund && (fund.pe != null || fund.dy != null || fund.pb != null));
 
   const stkLogo = stockLogo(key, u.name, u.symbol, "logo-in");
   const head = `<section class="xcard" style="padding:14px 16px">
@@ -79,7 +95,7 @@ export function viewStock() {
       </div>
       <div class="stk-px">
         <div class="p ${q ? tone(chg) : ""}">${q ? fmt(q.price, 2) : "—"}</div>
-        <div class="d ${q ? tone(chg) : "muted"}">${q && chgPct != null ? `${chg >= 0 ? "+" : ""}${fmt(chg, 2)} (${pct(chgPct)})` : "無報價"}</div>
+        <div class="d ${q ? tone(chg) : "muted"}">${q && chgPct != null ? `${chg >= 0 ? "+" : ""}${fmt(chg, 2)} (${pct(chgPct)})` : "報價資料建置中"}</div>
       </div>
     </div>
     <div class="stat4">
@@ -93,25 +109,25 @@ export function viewStock() {
   const RANGES = [[21, "1月"], [63, "3月"], [126, "6月"], [243, "1年"]];
   const rng = Number(S.stkRange) || 126;
   const rangeChips = RANGES.map(([r, l]) => `<button class="chip2${r === rng ? " on" : ""}" data-act="stk-range" data-range="${r}">${l}</button>`).join("");
-  const kline = `<section class="xcard" style="padding:12px 12px 8px">
+  const kline = cs.length >= 5 ? `<section class="xcard" style="padding:12px 12px 8px">
     <div class="chiprow" style="margin:0 0 6px">
       ${rangeChips}
       <span style="flex:1"></span>
-      <span class="chip2" style="pointer-events:none">${cs.length ? cs.length + " 根" : "無 K 線"}</span>
+      <span class="chip2" style="pointer-events:none">${cs.length} 根</span>
     </div>
     <div class="lwc-ohlc" id="stk-ohlc"></div>
     <div id="stk-main" class="lwc-main"></div>
     <div id="stk-sub" class="lwc-sub"></div>
     <div class="legend"><span><i style="background:var(--warn)"></i>MA5</span><span><i style="background:var(--blue)"></i>MA20</span><span><i style="background:var(--pink)"></i>MA60</span><span>成交量・RSI・MACD</span><span class="muted">拖曳平移・滾輪縮放・雙指縮放</span></div>
-  </section>`;
+  </section>` : "";
 
-  const tabs = `<div class="tabbar">${TABS.map((t) => `<button type="button" class="${t === tab ? "on" : ""}" data-act="stock-tab" data-tab="${t}">${t}</button>`).join("")}</div>`;
+  const tabs = avail.length > 1 ? `<div class="tabbar">${avail.map((t) => `<button type="button" class="${t === tab ? "on" : ""}" data-act="stock-tab" data-tab="${t}">${t}</button>`).join("")}</div>` : "";
 
-  return `${head}${kline}${tabs}<div id="stk-panel">${panel(u, key, tab, sc, q, chgPct)}</div>`;
+  return `${head}${kline}${tabs}<div id="stk-panel">${panel(u, key, tab, sc, q, chgPct, fund, hasFund)}</div>`;
 }
 
 /* ── 各頁籤內容 ── */
-function panel(u, key, tab, sc, q, chgPct) {
+function panel(u, key, tab, sc, q, chgPct, fund, hasFund) {
   const inst = institutions() || {};
   const r = instRank() || {};
   const nets = {};
@@ -127,22 +143,25 @@ function panel(u, key, tab, sc, q, chgPct) {
   const rsiVal = closes.length > 14 ? rsi(closes).slice(-1)[0] : null;
 
   if (tab === "概覽") {
-    const tag = (v, l) => `<div style="flex:1"><div class="small muted">${l}</div><div class="tag ${v == null ? "mid" : v >= 60 ? "bull" : v <= 40 ? "bear" : "mid"}" style="margin-top:6px;font-size:12.5px">${v == null ? "資料不足" : v >= 60 ? "偏多" : v <= 40 ? "偏空" : "中性"}</div></div>`;
+    const tag = (v, l) => v == null ? "" : `<div style="flex:1"><div class="small muted">${l}</div><div class="tag ${v >= 60 ? "bull" : v <= 40 ? "bear" : "mid"}" style="margin-top:6px;font-size:12.5px">${v >= 60 ? "偏多" : v <= 40 ? "偏空" : "中性"}</div></div>`;
+    const sum = [];
+    if (chgPct != null) sum.push(`今日${chgPct >= 0 ? "上漲" : "下跌"} ${Math.abs(chgPct).toFixed(2)}%`);
+    if (ret5 != null) sum.push(`近 5 日報酬 ${ret5 >= 0 ? "+" : ""}${ret5.toFixed(1)}%`);
+    if (ret20 != null) sum.push(`近 20 日 ${ret20 >= 0 ? "+" : ""}${ret20.toFixed(1)}%`);
+    if (sc.tech != null) sum.push(`技術面 ${sc.tech} 分${rsiVal != null ? `（RSI ${rsiVal.toFixed(0)}）` : ""}`);
+    if (sc.chip != null) sum.push(`籌碼面 ${sc.chip} 分`);
+    const summary = sum.length ? sum.join("，") + "。" : `${u.name}（${u.symbol}）日 K 資料建置中，技術與籌碼評分待補齊後顯示。`;
     return `<section class="xcard">
       <div class="sec-h"><span class="ico">✦</span><span class="tt">AI 綜合摘要</span><span class="sp"></span><span class="meta">${S.market?.date ? S.market.date.slice(4, 6) + "/" + S.market.date.slice(6, 8) : ""}</span></div>
-      <p class="small" style="line-height:1.75;color:#b6bdc6;margin:0 0 12px">
-        ${u.name}（${u.symbol}）今日${chgPct >= 0 ? "上漲" : "下跌"} ${Math.abs(chgPct || 0).toFixed(2)}%，
-        ${ret5 != null ? `近 5 日報酬 ${ret5 >= 0 ? "+" : ""}${ret5.toFixed(1)}%` : ""}${ret20 != null ? `、近 20 日 ${ret20 >= 0 ? "+" : ""}${ret20.toFixed(1)}%` : ""}；
-        技術面 ${sc.tech ?? "—"} 分（RSI ${rsiVal != null ? rsiVal.toFixed(0) : "—"}），籌碼面 ${sc.chip ?? "—"} 分。
-      </p>
-      <div class="row" style="gap:10px;margin-bottom:14px">${tag(sc.chip, "短線籌碼")}${tag(sc.mood, "中線情緒")}${tag(sc.fund, "長線基本面")}</div>
+      <p class="small" style="line-height:1.75;color:#b6bdc6;margin:0 0 12px">${esc(summary)}</p>
+      <div class="row" style="gap:10px;margin-bottom:14px">${tag(sc.chip, "短線籌碼")}${tag(sc.mood, "中線情緒")}${hasFund && fund.pe != null ? tag(Math.min(100, Math.max(0, Math.round((fund.dy || 0) * 8 + 30))), "長線基本面") : ""}</div>
       <div class="sec-h" style="margin-top:6px"><span class="tt">逐項分析</span></div>
-      <div class="rrow" style="grid-template-columns:minmax(0,1fr) auto"><div class="rmid"><div class="nm">技術面</div><div class="sub">均線／RSI／MACD 綜合</div></div><div class="rpx"><div class="p" style="font-size:14px">${sc.tech ?? "—"} / 100</div></div></div>
-      <div class="rrow" style="grid-template-columns:minmax(0,1fr) auto"><div class="rmid"><div class="nm">籌碼面</div><div class="sub">三大法人當日買賣超</div></div><div class="rpx"><div class="p" style="font-size:14px">${sc.chip ?? "—"} / 100</div></div></div>
-      <div class="rrow" style="grid-template-columns:minmax(0,1fr) auto"><div class="rmid"><div class="nm">情緒面</div><div class="sub">漲跌幅與量能</div></div><div class="rpx"><div class="p" style="font-size:14px">${sc.mood ?? "—"} / 100</div></div></div>
-      <div class="rrow" style="grid-template-columns:minmax(0,1fr) auto"><div class="rmid"><div class="nm">基本面</div><div class="sub">財報資料尚未串接</div></div><div class="rpx"><div class="p muted" style="font-size:14px">—</div></div></div>
-      <div class="chiprow" style="margin-top:12px"><span class="chip2" style="color:var(--gold2);border-color:rgba(217,177,106,.35)">價格攻防</span></div>
-      <div class="small muted">支撐 ${cs.length ? fmt(Math.min(...cs.slice(-20).map((c) => c.l)), 2) : "—"}｜壓力 ${cs.length ? fmt(Math.max(...cs.slice(-20).map((c) => c.h)), 2) : "—"}（近 20 日區間）</div>
+      <div class="rrow" style="grid-template-columns:minmax(0,1fr) auto"><div class="rmid"><div class="nm">技術面</div><div class="sub">均線／RSI／MACD 綜合</div></div><div class="rpx"><div class="p" style="font-size:14px">${sc.tech != null ? sc.tech + " / 100" : "待補"}</div></div></div>
+      <div class="rrow" style="grid-template-columns:minmax(0,1fr) auto"><div class="rmid"><div class="nm">籌碼面</div><div class="sub">三大法人當日買賣超</div></div><div class="rpx"><div class="p" style="font-size:14px">${sc.chip != null ? sc.chip + " / 100" : "待補"}</div></div></div>
+      <div class="rrow" style="grid-template-columns:minmax(0,1fr) auto"><div class="rmid"><div class="nm">情緒面</div><div class="sub">漲跌幅與量能</div></div><div class="rpx"><div class="p" style="font-size:14px">${sc.mood != null ? sc.mood + " / 100" : "待補"}</div></div></div>
+      ${hasFund ? `<div class="rrow" style="grid-template-columns:minmax(0,1fr) auto"><div class="rmid"><div class="nm">基本面</div><div class="sub">本益比 ｜ 殖利率 ｜ 股價淨值比</div></div><div class="rpx"><div class="p" style="font-size:12.5px">${fund.pe != null ? fmt(fund.pe, 1) : "—"}｜${fund.dy != null ? fund.dy.toFixed(2) + "%" : "—"}｜${fund.pb != null ? fmt(fund.pb, 2) : "—"}</div></div></div>` : ""}
+      ${cs.length >= 20 ? `<div class="chiprow" style="margin-top:12px"><span class="chip2" style="color:var(--gold2);border-color:rgba(217,177,106,.35)">價格攻防</span></div>
+      <div class="small muted">支撐 ${fmt(Math.min(...cs.slice(-20).map((c) => c.l)), 2)}｜壓力 ${fmt(Math.max(...cs.slice(-20).map((c) => c.h)), 2)}（近 20 日區間）</div>` : ""}
     </section>`;
   }
 
@@ -158,12 +177,12 @@ function panel(u, key, tab, sc, q, chgPct) {
           <div class="c"><div class="k">籌碼</div><div class="v">${sc.chip ?? "—"}</div></div>
           <div class="c"><div class="k">情緒</div><div class="v">${sc.mood ?? "—"}</div></div>
           <div class="c"><div class="k">技術</div><div class="v">${sc.tech ?? "—"}</div></div>
-          <div class="c"><div class="k">基本</div><div class="v muted">—</div></div>
+          <div class="c"><div class="k">基本</div><div class="v">${hasFund && fund.pe != null ? fmt(fund.pe, 1) : hasFund && fund.pb != null ? fmt(fund.pb, 2) : "—"}</div></div>
         </div>
       </div>
       <div class="row" style="margin-top:12px"><span class="small muted">AI 綜合評估</span><span class="small">信心 ${conf}% · 風險 ${risk}</span></div>
       <div class="barline"><i style="width:${sc.score || 0}%"></i></div>
-      <p class="small muted" style="margin-top:12px;line-height:1.7">評分由技術指標、法人籌碼與當日量價以規則式加權計算（0–100），非投資建議；基本面需串接財報資料後才會納入。</p>
+      <p class="small muted" style="margin-top:12px;line-height:1.7">評分由技術指標、法人籌碼與當日量價以規則式加權計算（0–100），非投資建議；基本面以本益比／殖利率／股價淨值比呈現。</p>
     </section>`;
   }
 
@@ -180,7 +199,7 @@ function panel(u, key, tab, sc, q, chgPct) {
       </div>
       <div class="row" style="margin-top:14px"><span class="small muted">綜合評分</span><span class="small" style="color:var(--gold2);font-weight:800">${m.score} / 100</span></div>
       <div class="barline"><i style="width:${m.score}%"></i></div>
-      <p class="small muted" style="margin-top:12px">成分股權重需 ETF 持股明細資料，目前未串接；此頁為報酬與風險統計。</p>
+      <p class="small muted" style="margin-top:12px">此頁為報酬與風險統計；成分股持股明細未提供，故不顯示權重區塊。</p>
     </section>`;
   }
 
