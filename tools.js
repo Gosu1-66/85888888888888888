@@ -191,43 +191,101 @@ export function viewIndex() {
     <section class="card"><a class="more-link" href="#/analysis">看完整行情與技術分析 ›</a></section>`;
 }
 
-/* ── 工具（計算機） ── */
+/* ── 智投（研究工具箱入口） ── */
 export function viewTools() {
+  const g = greedIndex();
+  const b = breadth();
+  const idx = indices()[0];
+  const hot = (b && b.rise + b.fall) ? Math.round(b.rise / (b.rise + b.fall) * 100) : null;
+  const tools = [
+    { ico: "🧮", name: "條件篩選器", sub: "法人偏多 + 技術轉強", href: "#/scan", tag: "研究" },
+    { ico: "🎚", name: "估值情境器", sub: "保守／中性／樂觀三檔", href: "#/valuation", tag: "研究" },
+    { ico: "🔔", name: "智慧警報", sub: "價格與漲跌幅通知", href: "#/profile?f=alerts", tag: "通知" },
+    { ico: "⚖", name: "多股比較", sub: "同產業橫向對照", href: "#/analysis", tag: "Plus" },
+  ];
+  return `<section class="xcard">
+      <div class="sec-h"><span class="ico">🎯</span><span class="tt">選擇今天的研究任務</span><span class="sp"></span><span class="meta">Free 方案</span></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        ${tools.map((t) => `<a href="${t.href}" style="text-decoration:none;color:inherit;background:var(--card2);border:1px solid rgba(255,255,255,.06);border-radius:14px;padding:13px 13px;display:block">
+          <div style="font-size:19px">${t.ico}</div>
+          <div style="font-weight:800;font-size:14px;margin-top:8px">${esc(t.name)}</div>
+          <div class="small muted" style="margin-top:3px;line-height:1.4">${esc(t.sub)}</div>
+          <div class="small" style="margin-top:8px;color:var(--gold2)">${esc(t.tag)}</div>
+        </a>`).join("")}
+      </div>
+    </section>
+    <section class="xcard">
+      <div class="sec-h"><span class="ico">📈</span><span class="tt">今日盤勢</span><span class="sp"></span><span class="meta">${S.market?.date ? S.market.date.slice(4, 6) + "/" + S.market.date.slice(6, 8) : ""}</span></div>
+      <div class="stat4" style="border-top:0;padding-top:0">
+        <div><div class="k">加權指數</div><div class="v ${idx ? tone(idx.changePct) : ""}" style="font-size:17px">${idx ? fmt(idx.price, 2) : "—"}</div></div>
+        <div><div class="k">漲跌</div><div class="v ${idx ? tone(idx.changePct) : ""}" style="font-size:17px">${idx && idx.changePct != null ? pct(idx.changePct) : "—"}</div></div>
+        <div><div class="k">上漲占比</div><div class="v" style="font-size:17px">${hot != null ? hot + "%" : "—"}</div></div>
+        <div><div class="k">市場情緒</div><div class="v" style="font-size:17px">${g ? g.score : "—"}</div></div>
+      </div>
+    </section>
+    <section class="xcard">
+      <div class="sec-h"><span class="ico">🔗</span><span class="tt">更多</span></div>
+      ${[["市場雷達", "#/radar"], ["外資買超", "#/inst"], ["當沖排行", "#/daytrade"], ["市場熱力圖", "#/heat"], ["交易成本試算", "#/calc"]].map(([n, h]) => `<a class="rrow" style="grid-template-columns:minmax(0,1fr) auto" href="${h}"><div class="rmid"><div class="nm">${esc(n)}</div></div><div class="rpx"><span class="muted">›</span></div></a>`).join("")}
+    </section>`;
+}
+
+/* ── 估值情境器 ── */
+export function viewValuation() {
+  const list = uni().filter((u) => u.market !== "指數" && S.quotes[u.key]);
+  const key = S.valKey && list.some((u) => u.key === S.valKey) ? S.valKey : list[0] && list[0].key;
+  const u = list.find((x) => x.key === key);
+  const cs = (S.file?.candles?.[key] || []).map((r) => (Array.isArray(r) ? { c: r[4] } : r)).map((x) => x.c).filter(Number.isFinite);
+  if (!u) return `${emptyCard("估值情境器", "尚無可用報價。")}`;
+  const q = S.quotes[key] || {};
+  const tail = cs.slice(-60);
+  const mean = tail.length ? tail.reduce((a, c) => a + c, 0) / tail.length : q.price;
+  const sd = tail.length > 2 ? Math.sqrt(tail.reduce((a, c) => a + (c - mean) ** 2, 0) / tail.length) : 0;
+  const pctOf = (p) => (mean ? (p - mean) / mean * 100 : 0);
+  const rows = [
+    ["保守（−1σ）", mean - sd, "回測 60 日均價下方一個標準差"],
+    ["中性（均價）", mean, "近 60 日收盤均價"],
+    ["樂觀（+1σ）", mean + sd, "回測 60 日均價上方一個標準差"],
+  ];
+  return `<section class="xcard">
+      <div class="sec-h"><span class="ico">🎚</span><span class="tt">估值情境器</span><span class="sp"></span><span class="meta">${esc(u.name)} ${esc(u.symbol)}</span></div>
+      <div class="chiprow" style="margin:0 0 10px;max-height:78px;overflow:auto">
+        ${list.slice(0, 12).map((x) => `<button type="button" class="chip2 ${x.key === key ? "on" : ""}" data-act="val-pick" data-key="${esc(x.key)}">${esc(x.name)}</button>`).join("")}
+      </div>
+      <div class="row" style="margin-bottom:6px"><span class="small muted">現價</span><span class="num small">${q.price != null ? fmt(q.price, 2) : "—"}</span></div>
+      ${rows.map(([l, v, d]) => `<div class="rrow" style="grid-template-columns:minmax(0,1fr) auto"><div class="rmid"><div class="nm">${esc(l)}</div><div class="sub">${esc(d)}</div></div><div class="rpx"><div class="p" style="font-size:15px">${fmt(v, 2)}</div><div class="d ${tone(pctOf(v))}" style="font-size:11.5px">${pctOf(v) >= 0 ? "+" : ""}${pctOf(v).toFixed(2)}%</div></div></div>`).join("")}
+      <p class="small muted" style="margin-top:12px;line-height:1.7">情境價位以近 60 日收盤統計推估，非預測、非投資建議；未含基本面 EPS 與同業本益比。</p>
+    </section>`;
+}
+
+/* ── 計算工具（原工具箱） ── */
+export function viewCalc() {
   const fx = fxRate();
-  return `${head("工具")}
-    <section class="card">
-      <h2 class="h2">台股交易成本試算</h2>
+  return `<section class="xcard">
+      <div class="sec-h"><span class="ico">🧾</span><span class="tt">台股交易成本試算</span></div>
       <div class="row" style="gap:8px">
         <input id="t-price" type="number" inputmode="decimal" placeholder="成交價（元）">
         <input id="t-lots" type="number" inputmode="decimal" placeholder="張數">
       </div>
       <div class="row" style="gap:8px;margin-top:8px">
-        <button type="button" class="btn primary" data-act="calc-fee">計算</button>
+        <button type="button" class="goldbtn" style="width:auto;padding:0 18px;height:38px" data-act="calc-fee">計算</button>
       </div>
       <div id="t-out" class="small muted" style="margin-top:10px">手續費以 6 折計算（0.1425% × 0.6），賣出另加證交稅 0.3%。</div>
     </section>
-    <section class="card">
-      <h2 class="h2">匯率換算（美元 ⇄ 新台幣）</h2>
-      <div class="row" style="gap:8px">
-        <input id="t-usd" type="number" inputmode="decimal" placeholder="美元金額">
-      </div>
-      <div class="row" style="gap:8px;margin-top:8px">
-        <button type="button" class="btn" data-act="calc-fx">換算</button>
-      </div>
+    <section class="xcard">
+      <div class="sec-h"><span class="ico">💱</span><span class="tt">匯率換算（美元 ⇄ 新台幣）</span></div>
+      <div class="row" style="gap:8px"><input id="t-usd" type="number" inputmode="decimal" placeholder="美元金額"></div>
+      <div class="row" style="gap:8px;margin-top:8px"><button type="button" class="ghostbtn" style="width:auto;padding:0 16px;height:36px" data-act="calc-fx">換算</button></div>
       <div id="t-fxout" class="small muted" style="margin-top:10px">目前匯率：1 美元 ≈ ${fx ? fx.toFixed(2) : "—"} 新台幣</div>
     </section>
-    <section class="card">
-      <h2 class="h2">報酬率試算</h2>
+    <section class="xcard">
+      <div class="sec-h"><span class="ico">📊</span><span class="tt">報酬率試算</span></div>
       <div class="row" style="gap:8px">
         <input id="t-cost" type="number" inputmode="decimal" placeholder="投入成本">
         <input id="t-now" type="number" inputmode="decimal" placeholder="目前市值">
       </div>
-      <div class="row" style="gap:8px;margin-top:8px">
-        <button type="button" class="btn" data-act="calc-ror">計算</button>
-      </div>
+      <div class="row" style="gap:8px;margin-top:8px"><button type="button" class="ghostbtn" style="width:auto;padding:0 16px;height:36px" data-act="calc-ror">計算</button></div>
       <div id="t-rorout" class="small muted" style="margin-top:10px">報酬率＝（目前市值 − 成本）／成本。</div>
-    </section>
-    <p class="muted small" style="text-align:center">試算結果僅供參考，實際費用以券商公告為準。</p>`;
+    </section>`;
 }
 
 /* ── actions ── */
@@ -261,4 +319,31 @@ registerAction("calc-ror", () => {
   out.innerHTML = `損益 <span class="${tone(d)}">${d > 0 ? "+" : ""}${fmt(d, 0)}</span> 元，報酬率 <span class="${tone(d)}">${r > 0 ? "+" : ""}${r.toFixed(2)}%</span>`;
 });
 registerAction("inst-tab", (el) => { S.instTab = el.dataset.tab; save(); window.dispatchEvent(new CustomEvent("portfolios:changed")); });
+registerAction("val-pick", (el) => { S.valKey = el.dataset.key; window.dispatchEvent(new CustomEvent("portfolios:changed")); });
 registerAction("scan-sort", (el) => { S.scanSort = el.dataset.sort; save(); window.dispatchEvent(new CustomEvent("portfolios:changed")); });
+
+/* ── 市場熱力圖（產業版）：面積＝資金規模，顏色＝淨買賣超方向 ── */
+export function viewHeat() {
+  const ind = industryFlow().slice().sort((a, b) => Math.abs(b.totalNet || 0) - Math.abs(a.totalNet || 0));
+  if (!ind.length) return `${head("市場熱力圖")}${emptyCard("市場熱力圖", "市場資料尚未更新")}`;
+  const max = Math.max(...ind.map((x) => Math.abs(x.totalNet || 0)), 1);
+  const blocks = ind.slice(0, 16).map((x) => {
+    const v = x.totalNet || 0;
+    const w = Math.abs(v) / max;
+    const bg = v >= 0 ? `rgba(255,77,79,${0.14 + w * 0.55})` : `rgba(36,194,111,${0.14 + w * 0.55})`;
+    return `<a href="#/inst" style="flex:${1 + Math.round(w * 4)};min-width:84px;background:${bg};border-radius:12px;padding:10px 10px;text-decoration:none;color:#fff;display:flex;flex-direction:column;justify-content:center;min-height:${52 + Math.round(w * 40)}px">
+      <div style="font-size:12.5px;font-weight:700;line-height:1.25">${esc(x.name)}</div>
+      <div style="font-family:var(--mono);font-size:12px;margin-top:3px;opacity:.92">${v >= 0 ? "+" + yi(v) : "-" + yi(Math.abs(v))}</div>
+    </a>`;
+  }).join("");
+  const rise = ind.filter((x) => (x.totalNet || 0) > 0).length, fall = ind.length - rise;
+  return `${head("市場熱力圖")}
+    <section class="card" style="padding:12px">
+      <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:stretch">${blocks}</div>
+      <div class="row" style="margin-top:12px;gap:10px;flex-wrap:wrap">
+        <span class="small muted">淨流入 ${rise} 個產業</span><span class="small muted">淨流出 ${fall} 個產業</span>
+        <span class="small muted">${S.market?.date ? S.market.date.slice(4, 6) + "/" + S.market.date.slice(6, 8) : ""}</span>
+      </div>
+    </section>
+    <p class="muted small" style="text-align:center">面積與顏色依產業三大法人淨買賣超金額；資料為 TWSE 盤後統計。</p>`;
+}
