@@ -355,28 +355,46 @@ registerAction("inst-tab", (el) => { S.instTab = el.dataset.tab; save(); window.
 registerAction("val-pick", (el) => { S.valKey = el.dataset.key; window.dispatchEvent(new CustomEvent("portfolios:changed")); });
 registerAction("scan-sort", (el) => { S.scanSort = el.dataset.sort; save(); window.dispatchEvent(new CustomEvent("portfolios:changed")); });
 
-/* ── 市場熱力圖（產業版）：面積＝資金規模，顏色＝淨買賣超方向 ── */
+/* ── 市場熱力圖（個股版）：面積＝漲跌幅規模，顏色＝漲跌，格內帶真 logo ── */
 export function viewHeat() {
-  const ind = industryFlow().slice().sort((a, b) => Math.abs(b.totalNet || 0) - Math.abs(a.totalNet || 0));
-  if (!ind.length) return `${head("市場熱力圖")}${emptyCard("市場熱力圖", "市場資料尚未更新")}`;
-  const max = Math.max(...ind.map((x) => Math.abs(x.totalNet || 0)), 1);
-  const blocks = ind.slice(0, 16).map((x) => {
-    const v = x.totalNet || 0;
-    const w = Math.abs(v) / max;
-    const bg = v >= 0 ? `rgba(255,77,79,${0.14 + w * 0.55})` : `rgba(36,194,111,${0.14 + w * 0.55})`;
-    return `<a href="#/inst" style="flex:${1 + Math.round(w * 4)};min-width:84px;background:${bg};border-radius:12px;padding:10px 10px;text-decoration:none;color:#fff;display:flex;flex-direction:column;justify-content:center;min-height:${52 + Math.round(w * 40)}px">
-      <div style="font-size:12.5px;font-weight:700;line-height:1.25">${esc(x.name)}</div>
-      <div style="font-family:var(--mono);font-size:12px;margin-top:3px;opacity:.92">${v >= 0 ? "+" + yi(v) : "-" + yi(Math.abs(v))}</div>
+  const rows = uni().filter((x) => x.market !== "指數" && S.quotes[x.key] && S.quotes[x.key].change != null)
+    .map((x) => ({ x, q: S.quotes[x.key] }));
+  const ind = industryFlow().slice().sort((a, b) => (b.totalNet || 0) - (a.totalNet || 0));
+  if (!rows.length) return `${head()}${emptyCard("市場熱力圖", "市場資料尚未更新")}`;
+  rows.sort((a, b) => Math.abs(b.q.change || 0) - Math.abs(a.q.change || 0));
+  const top = rows.filter((r) => r.x.market === "台股").slice(0, 10).concat(rows.filter((r) => r.x.market !== "台股").slice(0, 6));
+  const maxChg = Math.max(...top.map((r) => Math.abs(r.q.change || 0)), 1);
+  const blocks = top.map(({ x, q }) => {
+    const w = Math.abs(q.change || 0) / maxChg;
+    const up = (q.change || 0) >= 0;
+    const bg = up ? `rgba(255,77,79,${0.14 + w * 0.5})` : `rgba(36,194,111,${0.14 + w * 0.5})`;
+    const k = x.key;
+    return `<a href="#/stock/${encodeURIComponent(k)}" style="flex:${1 + Math.round(w * 4)};min-width:96px;background:${bg};border-radius:12px;padding:9px 10px;text-decoration:none;color:#fff;display:flex;flex-direction:column;justify-content:center;gap:5px;min-height:${62 + Math.round(w * 46)}px">
+      <span class="logo" style="width:24px;height:24px;flex:none">${stockLogo(k, x.name, x.symbol, "logo")}</span>
+      <div style="font-size:12.5px;font-weight:700;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(x.name)}</div>
+      <div style="font-family:var(--mono);font-size:12px;opacity:.95">${q.change != null ? pct(q.change) : "—"}</div>
     </a>`;
   }).join("");
-  const rise = ind.filter((x) => (x.totalNet || 0) > 0).length, fall = ind.length - rise;
-  return `${head("市場熱力圖")}
-    <section class="card" style="padding:12px">
+  const rise = rows.filter((r) => (r.q.change || 0) > 0).length, fall = rows.filter((r) => (r.q.change || 0) < 0).length;
+  const indRows = ind.slice(0, 8).map((x, i) => {
+    const v = x.totalNet || 0;
+    return `<div class="rrow" style="grid-template-columns:minmax(0,1fr) auto">
+      <div class="rmid"><div class="nm">${esc(clean(x.name))}</div></div>
+      <div class="rpx"><div class="p ${tone(v)}" style="font-size:13px">${(v >= 0 ? "+" : "") + zhang(v)}</div></div>
+    </div>`;
+  }).join("");
+  return `${head()}
+    <section class="xcard">
+      <div class="sec-h"><span class="ico">🔥</span><span class="tt">個股熱力圖</span><span class="sp"></span><span class="meta">面積＝漲跌幅</span></div>
       <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:stretch">${blocks}</div>
-      <div class="row" style="margin-top:12px;gap:10px;flex-wrap:wrap">
-        <span class="small muted">淨流入 ${rise} 個產業</span><span class="small muted">淨流出 ${fall} 個產業</span>
+      <div class="row" style="margin-top:12px;gap:12px;flex-wrap:wrap">
+        <span class="small muted">上漲 ${rise} 檔</span><span class="small muted">下跌 ${fall} 檔</span>
         <span class="small muted">${S.market?.date ? S.market.date.slice(4, 6) + "/" + S.market.date.slice(6, 8) : ""}</span>
       </div>
     </section>
-    <p class="muted small" style="text-align:center">面積與顏色依產業三大法人淨買賣超金額；資料為 TWSE 盤後統計。</p>`;
+    <section class="xcard">
+      <div class="sec-h"><span class="ico">🏭</span><span class="tt">產業資金</span><span class="sp"></span><a href="#/analysis" class="small" style="color:var(--gold2);text-decoration:none">行情頁 ›</a></div>
+      ${indRows || `<p class="small muted">尚無產業資料</p>`}
+    </section>
+    <p class="muted small" style="text-align:center">格內為內建與自選標的即時報價；下方產業資金為 TWSE 盤後統計。</p>`;
 }
