@@ -260,8 +260,8 @@ export function viewIndex() {
   /* 台指期（日盤／夜盤），排在「重要指數」清單最前面，對齊參考 App */
   const fut = S.market?.futures || null;
   const futRows = [];
-  if (fut?.afterHours) futRows.push({ nm: "台指期盤後", sub: "夜盤", icon: "🌙", price: fut.afterHours.price, change: fut.afterHours.change, pct: fut.afterHours.pct });
-  if (fut?.regular) futRows.push({ nm: "台指期", sub: "期貨", icon: "☀️", price: fut.regular.price, change: fut.regular.change, pct: fut.regular.pct });
+  if (fut?.afterHours) futRows.push({ nm: "台指期盤後", sub: "夜盤", icon: "🌙", price: fut.afterHours.price, change: fut.afterHours.change, pct: fut.afterHours.pct, vol: fut.afterHours.vol });
+  if (fut?.regular) futRows.push({ nm: "台指期", sub: "期貨", icon: "☀️", price: fut.regular.price, change: fut.regular.change, pct: fut.regular.pct, vol: fut.regular.vol });
   const futHtml = (cat === "all" ? futRows : []).map((f) => `<div class="rrow idx-row">
       <div class="rmid"><div class="nm">${esc(f.nm)} <span style="font-size:12px">${f.icon}</span></div><div class="sub">${esc(f.sub)}</div></div>
       <div class="rpx"><div class="p ${tone(f.pct)}" style="font-size:16px">${px(f.price)}</div><div class="d ${tone(f.pct)}">${f.change != null ? (f.change > 0 ? "+" : "") + fmt(f.change, 0) : "—"}${f.pct != null ? " · " + pct(f.pct) : ""}</div></div>
