@@ -29,6 +29,7 @@ export const instRank = () => S.market?.instRank || null;
 export const industryFlow = () => S.market?.industry || [];
 export const industryEst = () => S.market?.industryEst || {};
 export const daytrade = () => S.market?.daytrade || null;
+export const margin = () => S.market?.margin || null;
 // K 線統一為物件（prices.json 內存陣列 [t,o,h,l,c,v]）
 const candleRows = (key) => (S.file?.candles?.[key] || []).map((r) => (Array.isArray(r) ? { t: r[0], o: r[1], h: r[2], l: r[3], c: r[4], v: r[5] } : r));
 export const indexCandles = () => candleRows(keyOf("指數", "^TWII"));
