@@ -7,6 +7,7 @@ import { loadCandles } from "./quotes.js";
 import { instRank, daytrade } from "./marketdata.js";
 import { buildSeries } from "./indicators.js";
 import { drawTechnical } from "./charts.js";
+import { stockLogo, sparkLine } from "./home.js";
 
 /* ── 列表視圖 ── */
 function viewList() {
@@ -24,26 +25,29 @@ function viewList() {
   const row = (x) => {
     const k = x.key, qq = S.quotes[k];
     const w = S.set.watch.includes(k);
-    return `<div class="srow">
-      <a class="srow-mid" href="#/search?s=${encodeURIComponent(k)}">
-        <div class="srow-name"><strong>${esc(x.symbol)}</strong> <span class="muted">${esc(x.name)}</span></div>
-        <div class="srow-sub muted">${esc([x.board, x.industry, qq ? (qq.source === "binance" ? "即時" : "延遲") : "無報價"].filter(Boolean).join(" · "))}</div>
-      </a>
-      <div class="srow-px">
-        <div class="num">${qq ? fmt(qq.price, 2) : "—"}</div>
-        <div class="num small ${qq ? tone(qq.change) : ""}">${qq ? pct(qq.change) : "—"}</div>
-      </div>
-      <button type="button" class="btn sm srow-add ${w ? "" : "primary"}" data-act="toggle-watch" data-key="${esc(k)}">${w ? "已加" : "＋"}</button>
-    </div>`;
+    const logo = stockLogo(k, x.name, x.symbol, "logo");
+    return `<a class="rrow side" href="#/stock/${encodeURIComponent(k)}">
+      <span class="logo">${logo}</span>
+      <span class="rmid">
+        <div class="nm">${esc(x.name)}</div>
+        <div class="sub">${esc(x.symbol)}${x.industry ? `<span class="mini-chip">${esc(x.industry)}</span>` : ""}${w ? `<span class="mini-chip gold">自選</span>` : ""}</div>
+      </span>
+      <span class="rpx">
+        <div class="p">${qq ? fmt(qq.price, 2) : "—"}</div>
+        <div class="d ${qq ? tone(qq.change) : "muted"}">${qq ? pct(qq.change) : "—"}</div>
+      </span>
+      <span class="rside">${qq ? sparkLine(k, 64, 22) : ""}</span>
+    </a>`;
   };
 
-  return `<h1>搜索</h1>
-  ${statusBanner()}
-  <div class="card" style="margin:0 0 10px">
-    <input id="search-in" placeholder="輸入代號／名稱／產業，例如 2330、台積電、半導體" value="${esc(S.q || "")}" autocomplete="off" autocapitalize="characters">
-    <div class="small muted" style="margin-top:6px">搜尋範圍：${u.length} 檔內建與自訂標的。${q ? `「${esc(q)}」找到 ${hits.length} 檔。` : ""}</div>
-  </div>
-  ${groups.map(([label, arr]) => `<section class="card"><h2 class="h2">${label}（${arr.length}）</h2><div class="list">${arr.slice(0, 20).map(row).join("") || `<div class="muted small empty">無</div>`}</div></section>`).join("")}`;
+  return `<section class="xcard" style="padding:12px 14px">
+    <div class="search-box"><span class="muted">🔍</span><input id="search-in" placeholder="搜尋股票、產業、題材、功能" value="${esc(S.q || "")}" autocomplete="off"></div>
+    <div class="small muted" style="margin-top:8px">搜尋範圍：${u.length} 檔內建與自訂標的${q ? `，「${esc(q)}」找到 ${hits.length} 檔` : ""}</div>
+  </section>
+  ${groups.map(([label, arr]) => `<section class="xcard">
+    <div class="sec-h"><span class="tt">${label}</span><span class="sp"></span><span class="meta">${arr.length}</span></div>
+    ${arr.slice(0, 20).map(row).join("") || `<p class="small muted">無</p>`}
+  </section>`).join("")}`;
 }
 
 /* ── 個股詳情 ── */
@@ -117,7 +121,12 @@ function viewDetail(key) {
 /* ── 主視圖 ── */
 export function viewSearch() {
   const key = parseRoute().params.get("s");
-  if (key) return viewDetail(key);
+  if (key) {
+    // 舊連結（?s=）一律導到新的個股頁
+    const target = "#/stock/" + encodeURIComponent(key);
+    if (!location.hash.includes("/stock/")) setTimeout(() => { location.hash = target; }, 0);
+    return `<section class="xcard"><p class="small muted">正在開啟 ${esc(key)} 個股頁…</p></section>`;
+  }
   return viewList();
 }
 
