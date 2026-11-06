@@ -105,12 +105,27 @@ export const SUB_INDUSTRY_STOCKS = {
   "通信網路": ["2412", "3045", "4904", "2345", "6285"],
 };
 
-/** 全部可選標的 = 內建 + 自訂 + 已持有（依 key 去重） */
-export function universe(settings, data) {
+/** 全部可選標的 = 內建 + 自訂 + 已持有 + 全市場報價（依 key 去重） */
+export function universe(settings, data, quotes) {
   const map = new Map();
   const add = (x) => { const key = keyOf(x.market, x.symbol); if (!map.has(key)) map.set(key, { market: x.market, symbol: String(x.symbol).toUpperCase(), name: x.name || x.symbol, board: x.board || "", industry: x.industry || "", themes: x.themes || [], key }); };
   CATALOG.forEach(add);
   (settings.custom || []).forEach(add);
   (data.assets || []).forEach(add);
+  // 全市場（prices.json 的 quotes）→ 讓排行／熱力圖出現的個股與 ETF 都查得到名稱與產業別
+  if (quotes) {
+    for (const [key, q] of Object.entries(quotes)) {
+      if (map.has(key)) {
+        const cur = map.get(key);
+        if (!cur.name || cur.name === cur.symbol) cur.name = q.name || cur.name;
+        if (!cur.board && q.board) cur.board = q.board;
+        continue;
+      }
+      const parts = String(key).split(":");
+      if (parts[0] !== "台股") continue;
+      const symbol = parts[1] || "";
+      add({ market: "台股", symbol, name: q.name || symbol, board: q.board || "", industry: "", themes: [] });
+    }
+  }
   return [...map.values()];
 }
