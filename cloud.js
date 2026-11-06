@@ -179,10 +179,10 @@ export async function syncNow() {
         save(); toast("已從雲端還原資料");
       }
     } else {
-      const ok = await push(); toast(ok ? "已上傳本機資料到雲端" : "上傳失敗，請稍後再試");
+      const ok = await push(); if (ok) toast("已上傳本機資料到雲端"); else console.warn("[cloud] push failed");
     }
   } else {
-    const ok = await push(); toast(ok ? "已上傳本機資料到雲端" : "上傳失敗，請稍後再試");
+    const ok = await push(); if (ok) toast("已上傳本機資料到雲端"); else console.warn("[cloud] push failed");
   }
 }
 
