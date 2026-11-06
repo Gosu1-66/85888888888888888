@@ -30,7 +30,8 @@ function searchRow(x) {
   const w = S.set.watch.includes(k);
   const logo = stockLogo(k, x.name, x.symbol, "logo-in");
   const bars = (S.file?.candles?.[k] || []).length;
-  const openable = !!(qq && typeof qq.price === "number" && bars >= 60);
+  const isCrypto = String(k).startsWith("加密貨幣:");
+  const openable = !!(qq && typeof qq.price === "number" && (isCrypto || bars >= 60));
   return `<${openable ? `a href="#/stock/${encodeURIComponent(k)}"` : `div`} class="rrow side${openable ? "" : " static"}">
       <span class="logo">${logo}</span>
       <span class="rmid">
