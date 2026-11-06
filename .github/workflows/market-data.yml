@@ -17,10 +17,21 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Fetch prices (Yahoo / Fugle)
+      - name: Fetch prices — 盤中只更新報價
+        if: github.event_name != 'workflow_dispatch' && github.event.schedule != '30 9 * * 1-5'
         env:
           FUGLE_API_KEY: ${{ secrets.FUGLE_API_KEY }}
+          SKIP_CANDLES: "1"
         run: node scripts/fetch-prices.mjs
+      - name: Fetch prices — 盤後／手動：全市場報價 + 分批補日 K
+        if: github.event_name == 'workflow_dispatch' || github.event.schedule == '30 9 * * 1-5'
+        env:
+          FUGLE_API_KEY: ${{ secrets.FUGLE_API_KEY }}
+        run: |
+          for i in 1 2 3 4 5 6; do
+            echo "── 日 K 分片 $i/6 ──"
+            SHARD="$i/6" node scripts/fetch-prices.mjs || echo "shard $i failed"
+          done
       - name: Fetch market data (TWSE)
         run: node scripts/fetch-market.mjs
       - name: Fetch index history (TWSE MI_INDEX)
