@@ -90,15 +90,17 @@ export function viewStock() {
     </div>
   </section>`;
 
+  const RANGES = [[21, "1月"], [63, "3月"], [126, "6月"], [243, "1年"]];
+  const rng = Number(S.stkRange) || 126;
+  const rangeChips = RANGES.map(([r, l]) => `<button class="chip2${r === rng ? " on" : ""}" data-act="stk-range" data-range="${r}">${l}</button>`).join("");
   const kline = `<section class="xcard" style="padding:12px 12px 8px">
     <div class="chiprow" style="margin:0 0 6px">
-      <span class="chip2" style="color:var(--gold2);border-color:rgba(217,177,106,.4)">6月</span>
-      <span class="chip2">MA</span>
+      ${rangeChips}
       <span style="flex:1"></span>
-      <span class="chip2">${cs.length ? cs.length + " 根" : "無 K 線"}</span>
+      <span class="chip2" style="pointer-events:none">${cs.length ? cs.length + " 根" : "無 K 線"}</span>
     </div>
     <canvas id="stk-chart"></canvas>
-    <div class="legend"><span><i style="background:var(--warn)"></i>MA5</span><span><i style="background:var(--blue)"></i>MA20</span><span><i style="background:var(--pink)"></i>MA60</span><span>成交量・RSI・MACD</span></div>
+    <div class="legend"><span><i style="background:var(--warn)"></i>MA5</span><span><i style="background:var(--blue)"></i>MA20</span><span><i style="background:var(--pink)"></i>MA60</span><span>成交量・RSI・MACD</span><span class="muted">拖曳平移・滾輪縮放</span></div>
   </section>`;
 
   const tabs = `<div class="tabbar">${TABS.map((t) => `<button type="button" class="${t === tab ? "on" : ""}" data-act="stock-tab" data-tab="${t}">${t}</button>`).join("")}</div>`;
@@ -222,16 +224,67 @@ function panel(u, key, tab, sc, q, chgPct) {
   </section>`;
 }
 
-/* ── 繪圖 ── */
+/* ── 繪圖（含十字線、平移、縮放） ── */
+let chartState = null;
+
 export function afterStock() {
   const key = decodeURIComponent((location.hash.split("/stock/")[1] || "").split("?")[0]);
   const cs = candleObjs(key);
   const cv = $("#stk-chart");
-  if (!cv || cs.length < 5) return;
-  drawTechnical(cv, buildSeries(cs), -1, 400);
+  if (!cv || cs.length < 5) { chartState = null; return; }
+  const data = buildSeries(cs);
+  const n = data.length;
+  const range = Math.min(n, Number(S.stkRange) || 126);
+  if (!chartState || chartState.key !== key || chartState.range !== range) {
+    chartState = { key, range, data, start: n - range, end: n, hover: -1, drag: null };
+  } else {
+    chartState.data = data;
+    chartState.end = Math.min(chartState.end, n);
+    chartState.start = Math.max(0, Math.min(chartState.start, chartState.end - 10));
+  }
+  const H = 420;
+  const draw = () => { chartState.hit = drawTechnical(cv, chartState.data, { start: chartState.start, end: chartState.end, hover: chartState.hover }, H); };
+  draw();
+
+  cv.onmousemove = (ev) => {
+    const hit = chartState.hit;
+    if (chartState.drag) {
+      const span = chartState.drag.end - chartState.drag.start;
+      const pxPerIdx = (cv.clientWidth - 64) / span;
+      const shift = Math.round((ev.clientX - chartState.drag.x) / Math.max(1, pxPerIdx));
+      let s0 = chartState.drag.start - shift, e0 = chartState.drag.end - shift;
+      if (s0 < 0) { e0 -= s0; s0 = 0; }
+      if (e0 > chartState.data.length) { s0 -= e0 - chartState.data.length; e0 = chartState.data.length; }
+      chartState.start = Math.max(0, s0); chartState.end = e0;
+      draw(); return;
+    }
+    if (!hit) return;
+    chartState.hover = hit.indexAt(ev.clientX);
+    draw();
+  };
+  cv.onmouseleave = () => { chartState.hover = -1; draw(); };
+  cv.onmousedown = (ev) => { chartState.drag = { x: ev.clientX, start: chartState.start, end: chartState.end }; cv.style.cursor = "grabbing"; };
+  cv.onmouseup = () => { chartState.drag = null; cv.style.cursor = ""; };
+  cv.onwheel = (ev) => {
+    ev.preventDefault();
+    const hit = chartState.hit;
+    if (!hit) return;
+    const span = chartState.end - chartState.start;
+    const idx = hit.indexAt(ev.clientX);
+    const ns = Math.max(15, Math.min(chartState.data.length, Math.round(span * (ev.deltaY > 0 ? 1.25 : 0.8))));
+    let s0 = Math.round(idx - (idx - chartState.start) * (ns / span));
+    s0 = Math.max(0, Math.min(chartState.data.length - ns, s0));
+    chartState.start = s0; chartState.end = s0 + ns; chartState.hover = idx;
+    draw();
+  };
 }
 
 /* ── actions ── */
+registerAction("stk-range", (el) => {
+  S.stkRange = Number(el.dataset.range) || 126;
+  window.dispatchEvent(new CustomEvent("portfolios:changed"));
+});
+
 registerAction("stock-tab", (el) => {
   S.stockTab = el.dataset.tab;
   window.dispatchEvent(new CustomEvent("portfolios:changed"));
