@@ -12,6 +12,7 @@ import { viewProfile, afterProfile } from "./profile.js";
 import { viewCloud } from "./cloud.js";
 import { viewRadar, viewInst, viewDaytrade, viewScan, viewIndex, viewTools, viewHeat, viewValuation, viewCalc } from "./tools.js";
 import { viewStock, afterStock } from "./stock.js";
+import { viewIndexDetail, afterIndexDetail } from "./indexview.js";
 
 const VIEWS = {
   home: { view: viewHome, after: afterHome },
@@ -27,6 +28,7 @@ const VIEWS = {
   valuation: { view: viewValuation, after: null },
   calc: { view: viewCalc, after: null },
   stock: { view: viewStock, after: afterStock },
+  indexv: { view: viewIndexDetail, after: afterIndexDetail },
   portfolio: { view: viewPortfolios, after: afterPortfolios },
   profile: { view: viewProfile, after: afterProfile },
   cloud: { view: viewCloud, after: null },
@@ -41,9 +43,9 @@ const NAV_ITEM = [
 const TITLE = {
   home: "概覽", analysis: "行情", tools: "智投", search: "搜尋", radar: "市場雷達", inst: "外資買超",
   daytrade: "當沖排行", scan: "技術面選股", indexb: "指數總覽", heat: "市場熱力圖", valuation: "估值情境器", calc: "試算工具",
-  portfolio: "投資組合", profile: "我的", cloud: "雲端同步", stock: "個股",
+  portfolio: "投資組合", profile: "我的", cloud: "雲端同步", stock: "個股", indexv: "指數詳情",
 };
-const SUB_PAGE = new Set(["radar", "inst", "daytrade", "scan", "indexb", "heat", "valuation", "calc", "portfolio", "profile", "cloud", "stock"]);
+const SUB_PAGE = new Set(["radar", "inst", "daytrade", "scan", "indexb", "indexv", "heat", "valuation", "calc", "portfolio", "profile", "cloud", "stock"]);
 
 /* ── 指數跑馬燈 ── */
 function fillTicker() {
