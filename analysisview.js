@@ -11,6 +11,7 @@ import {
   keyOf, currencyOf, MARKETS, holdingStats, portfolioStats,
   toTWD, computePosition, toHoldings
 } from "./portfolio.js";
+import { stockLogo } from "./home.js";
 import { CATALOG, HOT_STOCKS, ETF_LIST, INDUSTRIES, universe } from "./catalog.js";
 import { refreshQuotes, loadCandles, SOURCE_LABEL } from "./quotes.js";
 import {
@@ -321,7 +322,25 @@ export function viewAnalysis() {
     return `<a class="rrow" style="grid-template-columns:minmax(0,1fr) auto" href="#/stock/${encodeURIComponent(k)}"><div class="rmid"><div class="nm">${esc(nm)}</div><div class="sub">${esc(String(x.code).trim())} · 外資買超</div></div><div class="rpx"><div class="p ${tone(amt)}" style="font-size:14px">${amt ? yi(amt) : zhang(x.net)}</div></div></a>`;
   }).join("");
 
-  const heatTop = ind.slice(0, 6).map((x) => `<a href="#/heat" style="flex:1;min-width:60px;padding:8px;border-radius:10px;background:${(x.totalNet || 0) >= 0 ? "rgba(255,77,79,.18)" : "rgba(36,194,111,.18)"};text-decoration:none;color:#fff"><div style="font-size:11.5px;font-weight:700">${esc(x.name)}</div><div class="small" style="font-family:var(--mono);margin-top:3px">${zhang(x.totalNet)}</div></a>`).join("");
+  const heatTop = (() => {
+    const all = uni().filter((u) => u.market !== "指數" && S.quotes[u.key] && S.quotes[u.key].change != null)
+      .sort((a, c) => Math.abs(S.quotes[c.key].change) - Math.abs(S.quotes[a.key].change));
+    const rows = all.filter((u) => u.market === "台股").slice(0, 4)
+      .concat(all.filter((u) => u.market !== "台股").slice(0, 2));
+    if (!rows.length) return `<p class="small muted">尚無報價資料</p>`;
+    return rows.map((u) => {
+      const q = S.quotes[u.key], up = (q.change || 0) >= 0;
+      const w = Math.abs(q.change || 0);
+      const bg = up ? `rgba(255,77,79,${0.14 + Math.min(w, 6) / 6 * 0.35})` : `rgba(36,194,111,${0.14 + Math.min(w, 6) / 6 * 0.35})`;
+      return `<a href="#/stock/${encodeURIComponent(u.key)}" style="flex:1 1 46%;min-width:120px;display:flex;gap:8px;align-items:center;padding:8px 9px;border-radius:12px;background:${bg};text-decoration:none;color:#fff">
+        <span class="logo" style="width:26px;height:26px;flex:none">${stockLogo(u.key, u.name, u.symbol, "logo")}</span>
+        <span style="min-width:0;flex:1">
+          <div class="nm" style="font-size:12.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(u.name)}</div>
+          <div style="font-family:var(--mono);font-size:11px;margin-top:2px" class="${tone(q.change)}">${q.change != null ? pct(q.change) : "—"}</div>
+        </span>
+      </a>`;
+    }).join("");
+  })();
 
   const gParts = g ? g.parts.map((p) => `<div class="rrow" style="grid-template-columns:minmax(0,1fr) auto"><div class="rmid"><div class="nm">${esc(p.label)}</div></div><div class="rpx"><span class="small">${esc(p.text)}</span></div></div>`).join("") : "";
 
