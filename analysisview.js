@@ -296,6 +296,9 @@ export function viewAnalysis() {
   const rank = instRank() || {};
   const priceOf = (code) => { const k = keyOf("台股", String(code).trim()); return S.quotes[k]?.price; };
   const amtOf = (code, net) => { const p = priceOf(code); return p && net ? net * p : null; };
+  // 可點判定：報價 + 至少 60 根日 K 才做成連結，否則不列入排行（避免點進去是空白頁）
+  const canKey = (key) => !!(S.quotes?.[key] && typeof S.quotes[key].price === "number") && (S.file?.candles?.[key]?.length || 0) >= 60;
+  const canCode = (code) => canKey(keyOf("台股", String(code || "").trim()));
   const dateTxt = S.market?.date ? S.market.date.slice(4, 6) + "/" + S.market.date.slice(6, 8) : "";
 
   const idxCards = idxs.map((i) => `<div class="fncard" style="min-width:104px">
@@ -315,7 +318,7 @@ export function viewAnalysis() {
   };
   const buy = ind.slice(0, 5), sell = ind.slice(-5).reverse();
 
-  const topRows = (rank.foreign || []).slice().sort((a, c) => c.net - a.net).slice(0, 5).map((x) => {
+  const topRows = (rank.foreign || []).filter((x) => canCode(x.code)).slice().sort((a, c) => c.net - a.net).slice(0, 5).map((x) => {
     const k = keyOf("台股", String(x.code).trim());
     const nm = uni().find((u) => u.key === k)?.name || String(x.name).trim();
     const amt = amtOf(x.code, x.net);
@@ -323,7 +326,7 @@ export function viewAnalysis() {
   }).join("");
 
   const heatTop = (() => {
-    const all = uni().filter((u) => u.market !== "指數" && S.quotes[u.key] && S.quotes[u.key].change != null)
+    const all = uni().filter((u) => u.market !== "指數" && canKey(u.key))
       .sort((a, c) => Math.abs(S.quotes[c.key].change) - Math.abs(S.quotes[a.key].change));
     const rows = all.filter((u) => u.market === "台股").slice(0, 4)
       .concat(all.filter((u) => u.market !== "台股").slice(0, 2));
@@ -436,7 +439,7 @@ export function viewAnalysis() {
 
   const daytradeBlock = `<section class="xcard">
       <div class="sec-h"><span class="ico">⚡</span><span class="tt">當沖熱門</span><span class="sp"></span><a href="#/daytrade" class="small" style="color:var(--gold2);text-decoration:none">排行 ›</a></div>
-      ${(dt?.list || []).slice(0, 5).map((x) => {
+      ${(dt?.list || []).filter((x) => canCode(x.code)).slice(0, 5).map((x) => {
         const k = keyOf("台股", String(x.code).trim());
         const nm = uni().find((u) => u.key === k)?.name || String(x.name).trim();
         return `<a class="rrow" style="grid-template-columns:minmax(0,1fr) auto" href="#/stock/${encodeURIComponent(k)}"><div class="rmid"><div class="nm">${esc(nm)}</div><div class="sub">${esc(String(x.code).trim())}${/A$/.test(String(x.code).trim()) ? `<span class="mini-chip">ETF</span>` : ""}</div></div><div class="rpx"><div class="p" style="font-size:14px">${zhang(x.shares)}</div></div></a>`;
@@ -444,7 +447,7 @@ export function viewAnalysis() {
     </section>`;
 
   /* 其他分頁內容 */
-  const etfRows = ETF_LIST.slice(0, 10).map((e) => {
+  const etfRows = ETF_LIST.filter((e) => canKey(keyOf("台股", e.symbol))).slice(0, 10).map((e) => {
     const code = e.symbol, nm = e.name, kind = e.type;
     const k = keyOf("台股", code), q = S.quotes[k];
     return `<a class="rrow side" href="#/stock/${encodeURIComponent(k)}">
@@ -455,7 +458,7 @@ export function viewAnalysis() {
   }).join("");
 
   const rankRows = (() => {
-    const all = uni().filter((u) => u.market !== "指數" && S.quotes[u.key] && S.quotes[u.key].change != null);
+    const all = uni().filter((u) => u.market !== "指數" && canKey(u.key) && S.quotes[u.key].change != null);
     const up = all.slice().sort((a, c) => S.quotes[c.key].change - S.quotes[a.key].change).slice(0, 8);
     const dn = all.slice().sort((a, c) => S.quotes[a.key].change - S.quotes[c.key].change).slice(0, 8);
     const row = (u) => { const q = S.quotes[u.key]; return `<a class="rrow" style="grid-template-columns:minmax(0,1fr) auto" href="#/stock/${encodeURIComponent(u.key)}"><div class="rmid"><div class="nm">${esc(u.name)}</div><div class="sub">${esc(u.market)} · ${esc(u.symbol)}</div></div><div class="rpx"><div class="p ${tone(q.change)}" style="font-size:14px">${pct(q.change)}</div></div></a>`; };
@@ -464,7 +467,7 @@ export function viewAnalysis() {
   })();
 
   const chipRows = (["foreign", "trust", "dealer"]).map((type) => {
-    const arr = (rank[type] || []).slice().sort((a, c) => c.net - a.net).slice(0, 6);
+    const arr = (rank[type] || []).filter((x) => canCode(x.code)).slice().sort((a, c) => c.net - a.net).slice(0, 6);
     const label = { foreign: "外資", trust: "投信", dealer: "自營商" }[type];
     return `<section class="xcard"><div class="sec-h"><span class="ico">🧾</span><span class="tt">${label}買超</span><span class="sp"></span><span class="date-chip">${esc(dateTxt)}</span></div>
       ${arr.map((x) => {
