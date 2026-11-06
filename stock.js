@@ -277,6 +277,7 @@ export function afterStock() {
     chartState.start = s0; chartState.end = s0 + ns; chartState.hover = idx;
     draw();
   };
+  chartState.redraw = draw;   // 供 module 級觸控委派使用
 }
 
 /* ── actions ── */
@@ -288,4 +289,54 @@ registerAction("stk-range", (el) => {
 registerAction("stock-tab", (el) => {
   S.stockTab = el.dataset.tab;
   window.dispatchEvent(new CustomEvent("portfolios:changed"));
+});
+
+/* ── 觸控（module 級委派：canvas 重繪後仍有效） ── */
+function tChartEl(ev) {
+  const el = ev.target;
+  return el && el.id === "stk-chart" ? el : null;
+}
+document.addEventListener("touchstart", (ev) => {
+  const cv = tChartEl(ev);
+  if (!cv || !chartState || !chartState.hit) return;
+  if (ev.touches.length === 1) {
+    chartState.tStart = { x: ev.touches[0].clientX, start: chartState.start, end: chartState.end };
+    chartState.tPinch = null;
+    chartState.hover = chartState.hit.indexAt(ev.touches[0].clientX);
+    chartState.redraw && chartState.redraw();
+  } else if (ev.touches.length === 2) {
+    chartState.tPinch = { d: Math.abs(ev.touches[0].clientX - ev.touches[1].clientX) || 1, start: chartState.start, end: chartState.end };
+    chartState.tStart = null;
+  }
+}, { passive: false });
+document.addEventListener("touchmove", (ev) => {
+  const cv = tChartEl(ev);
+  if (!cv || !chartState || !chartState.hit) return;
+  if (ev.cancelable) ev.preventDefault();
+  const hit = chartState.hit;
+  if (ev.touches.length === 1 && chartState.tStart) {
+    const st = chartState.tStart;
+    const span = st.end - st.start;
+    const pxPerIdx = (cv.clientWidth - 64) / Math.max(1, span);
+    const shift = Math.round((ev.touches[0].clientX - st.x) / Math.max(1, pxPerIdx));
+    let s0 = st.start - shift, e0 = st.end - shift;
+    if (s0 < 0) { e0 -= s0; s0 = 0; }
+    if (e0 > chartState.data.length) { s0 -= e0 - chartState.data.length; e0 = chartState.data.length; }
+    chartState.start = Math.max(0, s0); chartState.end = e0;
+    chartState.hover = hit.indexAt(ev.touches[0].clientX);
+    chartState.redraw && chartState.redraw();
+  } else if (ev.touches.length === 2 && chartState.tPinch) {
+    const tp = chartState.tPinch;
+    const d = Math.abs(ev.touches[0].clientX - ev.touches[1].clientX);
+    const span0 = tp.end - tp.start;
+    const ns = Math.max(15, Math.min(chartState.data.length, Math.round(span0 * (tp.d / Math.max(1, d)))));
+    const mid = Math.round((tp.start + tp.end) / 2);
+    let s0 = Math.max(0, Math.min(chartState.data.length - ns, Math.round(mid - ns / 2)));
+    chartState.start = s0; chartState.end = s0 + ns; chartState.hover = -1;
+    chartState.redraw && chartState.redraw();
+  }
+}, { passive: false });
+document.addEventListener("touchend", (ev) => {
+  if (!tChartEl(ev) || !chartState) return;
+  chartState.tStart = null; chartState.tPinch = null;
 });
