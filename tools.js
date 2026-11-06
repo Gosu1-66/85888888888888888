@@ -201,27 +201,79 @@ export function viewScan() {
 }
 
 /* ── 大盤 ── */
+/* ── 指數總覽（對齊參考 App：主指數大圖 + 分類 chip + 清單帶走勢） ── */
+const IDX_GROUP = [
+  ["all", "重要指數"],
+  ["tech", "電子"],
+  ["fin", "金融"],
+  ["mat", "原物料"],
+  ["other", "其他"],
+];
+const idxGroupOf = (name) => {
+  const n = String(name || "");
+  if (/電子|半導體/.test(n)) return "tech";
+  if (/金融/.test(n)) return "fin";
+  if (/化學|水泥|鋼鐵|塑膠|紡織|食品|橡膠|汽車|電機|電器/.test(n)) return "mat";
+  return "other";
+};
+const idxShort = (name) => String(name || "").replace("發行量加權股價指數", "加權指數").replace("類指數", "").replace("指數", "").trim() || "指數";
+const idxLabel = (code) => {
+  const c = String(code || "").slice(0, 3);
+  if (c === "t00") return "現貨";
+  if (c === "o00") return "櫃買指數";
+  return "類股指數";
+};
+
+registerAction("idx-cat", (el) => {
+  S.idxCat = el.dataset.cat;
+  save();
+  window.dispatchEvent(new CustomEvent("portfolios:changed"));
+});
+
 export function viewIndex() {
   const list = indices();
   const b = breadth();
   const ind = industryFlow();
-  const cards = list.map((i) => `<div class="idx-card compact">
-    <div class="small muted">${esc(i.name)}</div>
-    <div class="row" style="justify-content:space-between;align-items:flex-end;margin-top:4px">
-      <span class="num" style="font-size:17px">${fmt(i.price, 2)}</span>
-      <span class="num small ${tone(i.changePct)}">${i.change != null ? (i.change > 0 ? "+" : "") + fmt(i.change, 2) : "—"} ${i.changePct != null ? pct(i.changePct) : ""}</span>
-    </div>
-  </div>`).join("");
-  return `${head("大盤")}
-    <section class="card"><h2 class="h2">指數</h2><div class="index-cards">${cards || '<p class="muted small">尚無資料</p>'}</div></section>
-    ${b ? `<section class="card"><h2 class="h2">市場寬度</h2>
-      <div class="row" style="gap:8px"><span class="badge up">漲 ${b.rise}</span><span class="badge down">跌 ${b.fall}</span><span class="badge none">平 ${b.flat}</span></div>
-      <div class="small muted" style="margin-top:8px">成交金額 ${yi(b.amount)}</div></section>` : ""}
-    ${ind.length ? `<section class="card"><h2 class="h2">產業資金</h2>
-      ${ind.slice().sort((a, c) => (c.totalNet || 0) - (a.totalNet || 0)).slice(0, 8).map((x) => `<div class="list-item">
-        <span style="flex:1">${esc(x.name)}</span><span class="num ${tone(x.totalNet)}">${zhang(x.totalNet)}</span></div>`).join("")}
-    </section>` : ""}
-    <section class="card"><a class="more-link" href="#/analysis">看完整行情與技術分析 ›</a></section>`;
+  const dateTxt = S.market?.date ? S.market.date.slice(4, 6) + "/" + S.market.date.slice(6, 8) : "";
+  const cat = S.idxCat || "all";
+  const hero = list.find((i) => i.code === "t00") || list[0];
+  const rows = list.filter((i) => cat === "all" || idxGroupOf(i.name) === cat);
+  const px = (v) => (v == null ? "—" : fmt(v, v >= 1000 ? 0 : 2));
+
+  const heroHtml = hero ? `<div class="idx-hero">
+      <div class="ih-top"><div><div class="ih-nm">${esc(idxShort(hero.name))}</div><div class="ih-sub">現貨 · ${esc(dateTxt)}</div></div><span class="mini-chip ${(hero.changePct || 0) >= 0 ? "up" : "down"}">${hero.changePct != null ? pct(hero.changePct) : "—"}</span></div>
+      <div class="ih-px ${tone(hero.changePct)}">${px(hero.price)}</div>
+      <div class="ih-dl"><span class="${tone(hero.change)}">${hero.change != null ? (hero.change > 0 ? "+" : "") + fmt(hero.change, 0) : "—"}</span><em>｜</em><b class="${tone(hero.changePct)}">${hero.changePct != null ? pct(hero.changePct) : "—"}</b></div>
+      <div class="ih-chart">${sparkLine(keyOf("指數", "^TWII"), 340, 96)}</div>
+      <div class="ih-meta"><span>前收 ${hero.prev ? fmt(hero.prev, 2) : "—"}</span><span>日期 ${esc(dateTxt)}</span><span>${esc(String(hero.time || "").slice(-8))}</span></div>
+    </div>` : `<p class="small muted">指數資料更新中</p>`;
+
+  const cats = IDX_GROUP.map(([k, label]) => {
+    const n = k === "all" ? list.length : list.filter((i) => idxGroupOf(i.name) === k).length;
+    if (k !== "all" && !n) return "";
+    return `<button class="ana-tab${cat === k ? " on" : ""}" data-act="idx-cat" data-cat="${k}">${label}${n ? `<sup>${n}</sup>` : ""}</button>`;
+  }).join("");
+
+  const listRows = rows.map((i) => `<div class="rrow idx-row">
+      <div class="rmid"><div class="nm">${esc(idxShort(i.name))}</div><div class="sub">${esc(idxLabel(i.code))}</div></div>
+      <div class="rpx"><div class="p ${tone(i.changePct)}" style="font-size:16px">${px(i.price)}</div><div class="d ${tone(i.changePct)}">${i.changePct != null ? pct(i.changePct) : "—"}</div></div>
+      <div class="isp">${i.code === "t00" ? sparkLine(keyOf("指數", "^TWII"), 76, 24) : ""}</div>
+    </div>`).join("");
+
+  return `<section class="xcard">
+      <div class="sec-h"><span class="ico">🧭</span><span class="tt">市場指數</span><span class="sp"></span><span class="meta">${esc(dateTxt)}</span></div>
+      ${heroHtml}
+    </section>
+    <div class="ana-tabs" style="margin-top:-4px">${cats}</div>
+    <section class="xcard">
+      <div class="sec-h"><span class="ico">📋</span><span class="tt">${esc((IDX_GROUP.find((g) => g[0] === cat) || [0, "重要指數"])[1])}</span><span class="sp"></span><span class="badge none">${rows.length} 檔</span></div>
+      ${listRows || `<p class="small muted">此分類目前無資料</p>`}
+    </section>
+    ${b ? `<section class="xcard"><div class="sec-h"><span class="ico">📊</span><span class="tt">市場寬度</span><span class="sp"></span><span class="date-chip">${esc(dateTxt)}</span></div>
+      <div class="triple"><div><div class="k">上漲</div><div class="v up">${b.rise}</div></div><div><div class="k">平盤</div><div class="v">${b.flat}</div></div><div><div class="k">下跌</div><div class="v down">${b.fall}</div></div></div>
+      <div class="barline split"><i style="width:${Math.round(b.rise / Math.max(1, b.rise + b.flat + b.fall) * 100)}%;background:var(--up)"></i><i style="width:${100 - Math.round(b.rise / Math.max(1, b.rise + b.flat + b.fall) * 100)}%;background:var(--down)"></i></div>
+      <p class="small muted" style="margin-top:8px">成交金額 ${yi(b.amount)}</p></section>` : ""}
+    <section class="xcard"><a class="more-link" href="#/analysis">看完整行情與技術分析 ›</a></section>`;
 }
 
 /* ── 智投（研究工具箱入口） ── */
