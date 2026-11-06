@@ -129,6 +129,34 @@ async function fetchChart(sym) {
   return out;
 }
 
+/* ── 4c. 美股日 K + 報價（Yahoo，前端離線讀 prices.json） ── */
+const US_TICKERS = ["NVDA", "AAPL", "MSFT", "TSLA", "GOOGL", "GOOG", "AMZN", "META", "AMD", "TSM", "INTC",
+  "AVGO", "QCOM", "MU", "NFLX", "PLTR", "COIN", "ORCL", "CRM", "SMCI", "MSTR", "JPM", "VOO", "QQQ", "SPY"];
+
+async function fetchUsSeries(sym) {
+  const j = await fetchJson(YAHOO(sym), 2);
+  const res = j?.chart?.result?.[0];
+  if (!res) throw new Error(`empty ${sym}`);
+  const ts = res.timestamp || [];
+  const q = res.indicators?.quote?.[0] || {};
+  const out = [];
+  for (let i = 0; i < ts.length; i++) {
+    const o = q.open?.[i], h = q.high?.[i], l = q.low?.[i], c = q.close?.[i], v = q.volume?.[i];
+    if (o == null || h == null || l == null || c == null) continue;
+    out.push([ts[i], +o.toFixed(2), +h.toFixed(2), +l.toFixed(2), +c.toFixed(2), Math.round(v || 0)]);
+  }
+  if (!out.length) throw new Error(`no candles ${sym}`);
+  const meta = res.meta || {};
+  const last = out[out.length - 1];
+  const prevC = out.length > 1 ? out[out.length - 2][4] : null;
+  return {
+    candles: out,
+    price: +(meta.regularMarketPrice ?? last[4]),
+    prev: +(meta.chartPreviousClose ?? meta.previousClose ?? prevC ?? last[4]),
+    vol: Math.round(meta.regularMarketVolume || last[5] || 0),
+  };
+}
+
 /* ── 4b. Yahoo 掛掉時的備援：TWSE STOCK_DAY 月資料（上市） ── */
 async function fetchTwseMonthly(code) {
   const out = [];
@@ -317,6 +345,28 @@ async function main() {
   // 非台股（美股／指數／加密）沿用舊檔
   for (const [k, v] of Object.entries(prevCandles)) {
     if (!String(k).startsWith("台股:")) candles[k] = v;
+  }
+
+  // 美股：日線 + 報價（Yahoo chart，收進同一份 prices.json，前端離線讀）
+  if (!skipCandles) {
+    const usSyms = [...new Set([
+      ...US_TICKERS,
+      ...(watch || []).filter((x) => x.market === "美股").map((x) => String(x.symbol || "").toUpperCase()).filter(Boolean),
+    ])];
+    let usOk = 0;
+    for (const sym of usSyms) {
+      try {
+        const s = await fetchUsSeries(sym);
+        candles[`美股:${sym}`] = s.candles;
+        quotes[`美股:${sym}`] = { price: s.price, prev: s.prev, time: nowSec, name: sym, board: "", vol: s.vol };
+        usOk++;
+      } catch (e) { /* 單檔失敗不影響其他 */ }
+      await sleep(150);
+    }
+    process.stdout.write(`美股：${usOk}/${usSyms.length} 檔（日線 + 報價）\n`);
+  } else {
+    // 盤中只更新台股報價時，美股報價沿用舊檔
+    for (const [k, v] of Object.entries(prevPrices?.quotes || {})) if (String(k).startsWith("美股:")) quotes[k] = v;
   }
 
   // 匯率
