@@ -302,9 +302,10 @@ export function viewAnalysis() {
       <div class="small ${tone(i.changePct)}">${i.changePct != null ? pct(i.changePct) : "—"}</div>
     </div>`).join("");
 
+  const maxAbs = Math.max(...ind.map((x) => Math.abs(x.totalNet || 0)), 1);
   const flowRow = (x, sign) => {
     const v = x.totalNet || 0;
-    const w = Math.min(100, Math.abs(v) / (Math.abs(ind[0]?.totalNet || 1)) * 100);
+    const w = Math.min(100, Math.abs(v) / maxAbs * 100);
     return `<div class="rrow" style="grid-template-columns:minmax(0,1fr) auto">
       <div class="rmid"><div class="nm">${esc(x.name)}</div><div class="barline" style="margin-top:6px"><i style="width:${w}%;background:${sign > 0 ? "var(--up)" : "var(--down)"}"></i></div></div>
       <div class="rpx"><div class="p ${tone(v)}" style="font-size:14px">${(v >= 0 ? "+" : "") + zhang(v)}</div></div>
@@ -316,7 +317,7 @@ export function viewAnalysis() {
     const k = keyOf("台股", String(x.code).trim());
     const nm = uni().find((u) => u.key === k)?.name || String(x.name).trim();
     const amt = amtOf(x.code, x.net);
-    return `<a class="rrow" href="#/stock/${encodeURIComponent(k)}"><div class="rmid"><div class="nm">${esc(nm)}</div><div class="sub">${esc(String(x.code).trim())} · 外資買超</div></div><div class="rpx"><div class="p ${tone(amt)}" style="font-size:14px">${amt ? yi(amt) : zhang(x.net)}</div></div></a>`;
+    return `<a class="rrow" style="grid-template-columns:minmax(0,1fr) auto" href="#/stock/${encodeURIComponent(k)}"><div class="rmid"><div class="nm">${esc(nm)}</div><div class="sub">${esc(String(x.code).trim())} · 外資買超</div></div><div class="rpx"><div class="p ${tone(amt)}" style="font-size:14px">${amt ? yi(amt) : zhang(x.net)}</div></div></a>`;
   }).join("");
 
   const heatTop = ind.slice(0, 6).map((x) => `<a href="#/heat" style="flex:1;min-width:60px;padding:8px;border-radius:10px;background:${(x.totalNet || 0) >= 0 ? "rgba(255,77,79,.18)" : "rgba(36,194,111,.18)"};text-decoration:none;color:#fff"><div style="font-size:11.5px;font-weight:700">${esc(x.name)}</div><div class="small" style="font-family:var(--mono);margin-top:3px">${zhang(x.totalNet)}</div></a>`).join("");
@@ -371,7 +372,7 @@ export function viewAnalysis() {
     ${(dt?.list || []).slice(0, 5).map((x) => {
       const k = keyOf("台股", String(x.code).trim());
       const nm = uni().find((u) => u.key === k)?.name || String(x.name).trim();
-      return `<a class="rrow" href="#/stock/${encodeURIComponent(k)}"><div class="rmid"><div class="nm">${esc(nm)}</div><div class="sub">${esc(String(x.code).trim())}</div></div><div class="rpx"><div class="p" style="font-size:14px">${zhang(x.shares)}</div></div></a>`;
+      return `<a class="rrow" style="grid-template-columns:minmax(0,1fr) auto" href="#/stock/${encodeURIComponent(k)}"><div class="rmid"><div class="nm">${esc(nm)}</div><div class="sub">${esc(String(x.code).trim())}</div></div><div class="rpx"><div class="p" style="font-size:14px">${zhang(x.shares)}</div></div></a>`;
     }).join("") || `<p class="small muted">尚無資料</p>`}
   </section>
 
