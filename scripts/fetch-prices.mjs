@@ -154,12 +154,12 @@ function needCodes(market, watch, allRows) {
   // 成交值前段（熱力圖／雷達／漲跌排行會用到）
   const byAmt = Object.entries(allRows)
     .sort((a, b) => (b[1].amount || 0) - (a[1].amount || 0))
-    .slice(0, 220)
+    .slice(0, 520)
     .map(([c]) => c);
   byAmt.forEach(push);
 
   // ETF（含 00 開頭主動式 ETF）
-  Object.keys(allRows).filter((c) => /^00/.test(c)).slice(0, 60).forEach(push);
+  Object.keys(allRows).filter((c) => /^00/.test(c)).slice(0, 140).forEach(push);
 
   return [...set];
 }
