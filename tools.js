@@ -190,7 +190,7 @@ export function viewScan() {
         const k = x.key, nm = x.name;
         return `<a class="rrow" style="grid-template-columns:22px 34px minmax(0,1fr) auto 64px" href="#/stock/${encodeURIComponent(k)}">
           <span class="rk ${i === 0 ? "g1" : i === 1 ? "g2" : i === 2 ? "g3" : "gx"}" style="width:20px;height:20px;font-size:11px">${i + 1}</span>
-          <span class="logo">${stockLogo(k, nm, x.symbol, "logo")}</span>
+          <span class="logo">${stockLogo(k, nm, x.symbol, "logo-in")}</span>
           <span class="rmid"><div class="nm">${esc(nm)}</div><div class="sub">${esc(x.symbol)}${x.industry ? `<span class="mini-chip">${esc(x.industry)}</span>` : ""}</div></span>
           <span class="rpx"><div class="p">${fmt(q.price, 2)}</div><div class="d ${tone(q.change)}">${q.change != null ? pct(q.change) : "—"}</div></span>
           <span class="rside">${sparkLine(k, 64, 22)}</span>
