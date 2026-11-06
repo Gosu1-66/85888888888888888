@@ -484,3 +484,5 @@ canvas#stk-chart { border-radius: 10px; }
 #stk-sub { min-height: 100px; }
 .idx-row.static { cursor: default; }
 .idx-row.static .go { display: none; }
+
+.rrow.static{cursor:default;opacity:.82}
