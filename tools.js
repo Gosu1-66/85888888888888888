@@ -10,6 +10,9 @@ import { stockLogo, sparkLine } from "./home.js";
 const yi = (n) => (n == null || isNaN(n)) ? "—" : fmt(Math.round(n / 1e8), 0) + "億";
 const zhang = (n) => (n == null || isNaN(n)) ? "—" : fmt(Math.round(n / 1000), 0) + "張";
 const clean = (s) => String(s || "").trim();
+/* 可點判定：有報價 + 至少 60 根日 K（避免點進去看不到圖） */
+const canKey = (k) => !!(S.quotes?.[k] && typeof S.quotes[k].price === "number") && (S.file?.candles?.[k]?.length || 0) >= 60;
+const canCode = (c) => canKey(keyOf("台股", clean(c)));
 const nameOf = (code, raw) => {
   const k = keyOf("台股", code);
   return uni().find((x) => x.key === k)?.name || clean(raw) || code;
@@ -50,7 +53,7 @@ export function viewRadar() {
     </div>`;
   }).join("");
 
-  const foreign = (rank.foreign || []).slice().sort((a, c) => c.net - a.net);
+  const foreign = (rank.foreign || []).filter((x) => canCode(x.code)).slice().sort((a, c) => c.net - a.net);
   const maxF = Math.max(...foreign.map((x) => x.net), 1);
   const stkTop = foreign.slice(0, 6).map((x, i) => {
     const k = keyOf("台股", String(x.code).trim());
@@ -147,7 +150,7 @@ export function viewDaytrade() {
   if (!d || !d.list) return `${head("當沖排行")}${emptyCard("當沖排行", "市場資料尚未更新")}`;
   const total = d.total?.shares;
   const totalText = total == null ? "—" : (total > 1e10 ? yi(total) : zhang(total));
-  const rows = d.list.slice().sort((a, b) => (b.shares || 0) - (a.shares || 0));
+  const rows = d.list.slice().filter((x) => canCode(x.code)).sort((a, b) => (b.shares || 0) - (a.shares || 0));
   return `${head()}
     <section class="xcard">
       <div class="sec-h"><span class="tt">全市場當沖成交量</span><span class="sp"></span><span class="meta">${esc(d.date || "")}</span></div>
@@ -175,7 +178,7 @@ export function viewDaytrade() {
 export function viewScan() {
   const sort = S.scanSort || "chg";
   const tabs = [["chg", "漲幅"], ["drop", "跌幅"], ["price", "價格"]];
-  const rows = uni().filter((x) => x.market !== "指數" && S.quotes[x.key]).map((x) => ({ x, q: S.quotes[x.key] }));
+  const rows = uni().filter((x) => x.market !== "指數" && canKey(x.key)).map((x) => ({ x, q: S.quotes[x.key] }));
   const sorted = rows.slice().sort((a, b) => {
     if (sort === "price") return (b.q.price || 0) - (a.q.price || 0);
     if (sort === "drop") return (a.q.change || 0) - (b.q.change || 0);
@@ -197,7 +200,7 @@ export function viewScan() {
         </a>`;
       }).join("") || `<p class="small muted">目前無報價資料。</p>`}
     </section>
-    <p class="muted small" style="text-align:center">依即時報價排序，清單為內建與自選標的。</p>`;
+    <p class="muted small" style="text-align:center">全市場報價，僅列出已有日 K 的標的（可點進去看線圖）。</p>`;
 }
 
 /* ── 大盤 ── */
@@ -462,7 +465,7 @@ const heatIcon = (x) => {
   return `<span class="hicon-txt">${esc(String(x.name).trim().slice(0, 1))}</span>`;
 };
 export function viewHeat() {
-  const rows = uni().filter((x) => x.market !== "指數" && S.quotes[x.key] && S.quotes[x.key].change != null)
+  const rows = uni().filter((x) => x.market !== "指數" && canKey(x.key))
     .map((x) => ({ x, q: S.quotes[x.key] }));
   const ind = industryFlow().slice().sort((a, b) => (b.totalNet || 0) - (a.totalNet || 0));
   if (!rows.length) return `${head()}${emptyCard("市場熱力圖", "市場資料尚未更新")}`;
@@ -514,5 +517,5 @@ export function viewHeat() {
       <div class="sec-h"><span class="ico">🏭</span><span class="tt">產業資金</span><span class="sp"></span><a href="#/analysis" class="small" style="color:var(--gold2);text-decoration:none">行情頁 ›</a></div>
       ${indRows || `<p class="small muted">尚無產業資料</p>`}
     </section>
-    <p class="muted small" style="text-align:center">格內為內建與自選標的即時報價；下方產業資金為 TWSE 盤後統計。</p>`;
+    <p class="muted small" style="text-align:center">格內為全市場有日 K 的標的（可點進去）；下方產業資金為 TWSE 盤後統計。</p>`;
 }
