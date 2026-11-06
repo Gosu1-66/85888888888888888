@@ -28,6 +28,14 @@ export async function refreshMarket() {
       } catch {}
     }
   } catch { S.market = null; }
+  // 指數日線歷史（供指數詳情頁畫圖）
+  try {
+    const rh = await fetch(`index-history.json?t=${Date.now()}`, { cache: "no-store", signal: AbortSignal.timeout(8000) });
+    if (rh.ok) {
+      const jh = await rh.json();
+      if (jh && jh.series) S.idxHist = jh.series;
+    }
+  } catch {}
 }
 
 /* ── 存取器（缺資料一律回 null/[]，view 自行降級） ── */
