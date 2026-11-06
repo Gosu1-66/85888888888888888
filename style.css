@@ -100,7 +100,8 @@ ul.bul { margin: 6px 0 0; padding-left: 18px; } ul.bul li { margin: 4px 0; }
 .qrow:last-child { border-bottom: 0; }
 .qrow-id { display: flex; flex-direction: column; min-width: 74px; }
 .qrow-logo { width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; flex: none; position: relative; overflow: hidden; }
-.qrow-logo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; padding: 2px; background: #fff; }
+.qrow-logo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; padding: 2px; background: #fff; z-index: 2; }
+.qrow-logo .lg-char { position: relative; z-index: 1; }
 .lg-char { line-height: 1; }
 .more-link { display: block; text-align: center; padding: 10px 0 2px; color: var(--primary); font-size: 13px; text-decoration: none; }
 .qrow-id .small { font-size: 12px; line-height: 1.35; }
@@ -240,7 +241,11 @@ main { padding: 8px 12px calc(var(--nav-h) + 26px + env(safe-area-inset-bottom))
 
 /* 頂部列 */
 .topbar { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 10px; height: calc(56px + env(safe-area-inset-top)); padding: env(safe-area-inset-top) 14px 0; background: rgba(10,11,13,.92); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(255,255,255,.05); max-width: 720px; margin: 0 auto; }
-.topbar .tb-title { font-size: 18px; font-weight: 800; letter-spacing: .5px; display: flex; align-items: center; gap: 6px; }
+.topbar .tb-title { font-size: 18px; font-weight: 800; letter-spacing: .5px; display: flex; align-items: center; gap: 6px; min-width: 0; }
+/* 左上品牌 GU1 */
+.topbar .tb-brand { flex: none; font-size: 15px; font-weight: 900; letter-spacing: 1.5px; text-decoration: none; background: linear-gradient(150deg,#f2dca2,#d9b16a 45%,#b8892f); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.topbar .tb-sep { flex: none; width: 1px; height: 15px; background: rgba(217,177,106,.28); }
+.topbar .tb-title span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .topbar .tb-dot { width: 7px; height: 7px; border-radius: 50%; background: #3f8cff; }
 .topbar .tb-sp { flex: 1; }
 .tb-ico { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: var(--card2); border: 0; color: var(--fg); font-size: 15px; cursor: pointer; }
