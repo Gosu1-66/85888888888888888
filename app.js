@@ -52,9 +52,17 @@ function fillTicker() {
   const idxs = indices();
   if (!idxs.length) { el.innerHTML = `<span class="tk">指數資料更新中…</span>`; return; }
   const pri = (i) => (i.name || "").includes("加權") ? 0 : (i.name || "").includes("櫃買") ? 1 : 2;
-  const list = idxs.slice().sort((a, b) => pri(a) - pri(b)).slice(0, 6);
+  const narrow = (window.innerWidth || 0) < 520;
+  const list = idxs.slice().sort((a, b) => pri(a) - pri(b)).slice(0, narrow ? 3 : 6);
   const items = list.map((i) => `<span class="tk">${i.name.replace("發行量加權股價指數", "加權指數")}<b>${Number(i.price).toLocaleString("zh-TW", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</b><span class="${i.change >= 0 ? "up" : "down"}">${i.change >= 0 ? "+" : ""}${i.change.toFixed(2)} (${i.changePct >= 0 ? "+" : ""}${i.changePct.toFixed(2)}%)</span></span>`).join("");
   el.innerHTML = items + items;             // 兩份以無縫循環
+  // 固定像素速度（約 52px/s），窄螢幕不會慢到像卡住
+  const setSpeed = () => {
+    const half = (el.scrollWidth || 0) / 2;
+    if (half > 20) el.style.animationDuration = `${Math.max(8, Math.round(half / 52))}s`;
+  };
+  setSpeed();
+  setTimeout(setSpeed, 300);
 }
 
 /* ── 渲染 ── */
@@ -177,6 +185,8 @@ function init() {
   const root = $("#root");
   root.innerHTML = `<header class="topbar">
       <button type="button" class="back" id="tb-back" data-act="go-back" style="display:none">‹</button>
+      <a class="tb-brand" href="#/home">GU1</a>
+      <span class="tb-sep"></span>
       <div class="tb-title" id="tb-title"><span>概覽</span></div>
       <span class="tb-sp"></span>
       <button type="button" class="tb-ico g" id="tb-user" data-act="goto" data-href="#/profile">G</button>
