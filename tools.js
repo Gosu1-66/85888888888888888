@@ -217,11 +217,16 @@ const idxGroupOf = (name) => {
   return "other";
 };
 const idxShort = (name) => String(name || "").replace("發行量加權股價指數", "加權指數").replace("類指數", "").replace("指數", "").trim() || "指數";
+/* 清單用全名，對齊參考 App：加權指數／櫃買指數／半導體類／金融保險類 */
+const idxName = (i) => {
+  const full = String(i?.name || "").replace("發行量加權股價指數", "加權指數");
+  if (/類指數$/.test(full)) return full.replace(/類指數$/, "類");
+  return full || "指數";
+};
 const idxLabel = (code) => {
   const c = String(code || "").slice(0, 3);
-  if (c === "t00") return "現貨";
-  if (c === "o00") return "櫃買指數";
-  return "類股指數";
+  if (c === "o00") return "現貨";
+  return "現貨";
 };
 
 registerAction("idx-cat", (el) => {
@@ -229,6 +234,16 @@ registerAction("idx-cat", (el) => {
   save();
   window.dispatchEvent(new CustomEvent("portfolios:changed"));
 });
+
+/* 以收盤價序列畫迷你走勢 */
+function sparkArr(arr, w = 340, h = 96) {
+  if (!arr || arr.length < 2) return `<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"></svg>`;
+  const cs = arr.slice(-110);
+  const min = Math.min(...cs), max = Math.max(...cs), rng = (max - min) || 1;
+  const pts = cs.map((c, i) => `${((i / (cs.length - 1)) * (w - 2) + 1).toFixed(1)},${(h - 2 - ((c - min) / rng) * (h - 4)).toFixed(1)}`).join(" ");
+  const up = cs[cs.length - 1] >= cs[0];
+  return `<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><polyline points="${pts}" fill="none" stroke="${up ? "var(--up)" : "var(--down)"}" stroke-width="1.4" stroke-linecap="round"/></svg>`;
+}
 
 export function viewIndex() {
   const list = indices();
@@ -240,24 +255,44 @@ export function viewIndex() {
   const rows = list.filter((i) => cat === "all" || idxGroupOf(i.name) === cat);
   const px = (v) => (v == null ? "—" : fmt(v, v >= 1000 ? 0 : 2));
 
-  const heroHtml = hero ? `<div class="idx-hero">
+  /* 台指期（日盤／夜盤），排在「重要指數」清單最前面，對齊參考 App */
+  const fut = S.market?.futures || null;
+  const futRows = [];
+  if (fut?.afterHours) futRows.push({ nm: "台指期盤後", sub: "夜盤", icon: "🌙", price: fut.afterHours.price, change: fut.afterHours.change, pct: fut.afterHours.pct });
+  if (fut?.regular) futRows.push({ nm: "台指期", sub: "期貨", icon: "☀️", price: fut.regular.price, change: fut.regular.change, pct: fut.regular.pct });
+  const futHtml = (cat === "all" ? futRows : []).map((f) => `<div class="rrow idx-row">
+      <div class="rmid"><div class="nm">${esc(f.nm)} <span style="font-size:12px">${f.icon}</span></div><div class="sub">${esc(f.sub)}</div></div>
+      <div class="rpx"><div class="p ${tone(f.pct)}" style="font-size:16px">${px(f.price)}</div><div class="d ${tone(f.pct)}">${f.change != null ? (f.change > 0 ? "+" : "") + fmt(f.change, 0) : "—"}${f.pct != null ? " · " + pct(f.pct) : ""}</div></div>
+      <div class="isp"></div>
+    </div>`).join("");
+  const totalRows = futHtml ? futRows.length + rows.length : rows.length;
+
+  /* hero：有台指期盤後就用它（對齊參考 App），否則用加權 */
+  const heroF = fut?.afterHours || fut?.regular || null;
+  const heroHtml = heroF ? `<div class="idx-hero">
+      <div class="ih-top"><div><div class="ih-nm">${esc(fut?.afterHours ? "台指期盤後" : "台指期")} <span style="font-size:12px">${fut?.afterHours ? "🌙" : "☀️"}</span></div><div class="ih-sub">${esc(fut?.afterHours ? "夜盤" : "期貨")} · ${esc(String(heroF.contract || ""))}</div></div><span class="mini-chip ${(heroF.pct || 0) >= 0 ? "up" : "down"}">${heroF.pct != null ? pct(heroF.pct) : "—"}</span></div>
+      <div class="ih-px ${tone(heroF.pct)}">${px(heroF.price)}</div>
+      <div class="ih-dl"><span class="${tone(heroF.change)}">${heroF.change != null ? (heroF.change > 0 ? "+" : "") + fmt(heroF.change, 0) : "—"}</span><em>｜</em><b class="${tone(heroF.pct)}">${heroF.pct != null ? pct(heroF.pct) : "—"}</b></div>
+      <div class="ih-chart">${sparkArr(heroF.chart, 340, 96)}</div>
+      <div class="ih-meta"><span>前收 ${heroF.ref ? fmt(heroF.ref, 2) : "—"}</span><span>成交量 ${heroF.vol ? fmt(heroF.vol, 0) + " 口" : "—"}</span><span>${esc(dateTxt)}</span></div>
+    </div>` : (hero ? `<div class="idx-hero">
       <div class="ih-top"><div><div class="ih-nm">${esc(idxShort(hero.name))}</div><div class="ih-sub">現貨 · ${esc(dateTxt)}</div></div><span class="mini-chip ${(hero.changePct || 0) >= 0 ? "up" : "down"}">${hero.changePct != null ? pct(hero.changePct) : "—"}</span></div>
       <div class="ih-px ${tone(hero.changePct)}">${px(hero.price)}</div>
       <div class="ih-dl"><span class="${tone(hero.change)}">${hero.change != null ? (hero.change > 0 ? "+" : "") + fmt(hero.change, 0) : "—"}</span><em>｜</em><b class="${tone(hero.changePct)}">${hero.changePct != null ? pct(hero.changePct) : "—"}</b></div>
       <div class="ih-chart">${sparkLine(keyOf("指數", "^TWII"), 340, 96)}</div>
       <div class="ih-meta"><span>前收 ${hero.prev ? fmt(hero.prev, 2) : "—"}</span><span>日期 ${esc(dateTxt)}</span><span>${esc(String(hero.time || "").slice(-8))}</span></div>
-    </div>` : `<p class="small muted">指數資料更新中</p>`;
+    </div>` : `<p class="small muted">指數資料更新中</p>`);
 
   const cats = IDX_GROUP.map(([k, label]) => {
-    const n = k === "all" ? list.length : list.filter((i) => idxGroupOf(i.name) === k).length;
+    const n = k === "all" ? list.length + futRows.length : list.filter((i) => idxGroupOf(i.name) === k).length;
     if (k !== "all" && !n) return "";
     return `<button class="ana-tab${cat === k ? " on" : ""}" data-act="idx-cat" data-cat="${k}">${label}${n ? `<sup>${n}</sup>` : ""}</button>`;
   }).join("");
 
   const listRows = rows.map((i) => `<div class="rrow idx-row">
-      <div class="rmid"><div class="nm">${esc(idxShort(i.name))}</div><div class="sub">${esc(idxLabel(i.code))}</div></div>
+      <div class="rmid"><div class="nm">${esc(idxName(i))}</div><div class="sub">${esc(idxLabel(i.code))}</div></div>
       <div class="rpx"><div class="p ${tone(i.changePct)}" style="font-size:16px">${px(i.price)}</div><div class="d ${tone(i.changePct)}">${i.changePct != null ? pct(i.changePct) : "—"}</div></div>
-      <div class="isp">${i.code === "t00" ? sparkLine(keyOf("指數", "^TWII"), 76, 24) : ""}</div>
+      <div class="isp">${i.code === "t00" ? sparkLine(keyOf("指數", "^TWII"), 76, 24) : `<span class="small muted" style="display:block;text-align:right;line-height:1.3">前收<br>${i.prev ? fmt(i.prev, 2) : "—"}</span>`}</div>
     </div>`).join("");
 
   return `<section class="xcard">
@@ -266,8 +301,8 @@ export function viewIndex() {
     </section>
     <div class="ana-tabs" style="margin-top:-4px">${cats}</div>
     <section class="xcard">
-      <div class="sec-h"><span class="ico">📋</span><span class="tt">${esc((IDX_GROUP.find((g) => g[0] === cat) || [0, "重要指數"])[1])}</span><span class="sp"></span><span class="badge none">${rows.length} 檔</span></div>
-      ${listRows || `<p class="small muted">此分類目前無資料</p>`}
+      <div class="sec-h"><span class="ico">📋</span><span class="tt">${esc((IDX_GROUP.find((g) => g[0] === cat) || [0, "重要指數"])[1])}</span><span class="sp"></span><span class="badge none">${totalRows} 檔</span></div>
+      ${futHtml}${listRows || (futHtml ? "" : `<p class="small muted">此分類目前無資料</p>`)}
     </section>
     ${b ? `<section class="xcard"><div class="sec-h"><span class="ico">📊</span><span class="tt">市場寬度</span><span class="sp"></span><span class="date-chip">${esc(dateTxt)}</span></div>
       <div class="triple"><div><div class="k">上漲</div><div class="v up">${b.rise}</div></div><div><div class="k">平盤</div><div class="v">${b.flat}</div></div><div><div class="k">下跌</div><div class="v down">${b.fall}</div></div></div>
