@@ -355,25 +355,45 @@ registerAction("inst-tab", (el) => { S.instTab = el.dataset.tab; save(); window.
 registerAction("val-pick", (el) => { S.valKey = el.dataset.key; window.dispatchEvent(new CustomEvent("portfolios:changed")); });
 registerAction("scan-sort", (el) => { S.scanSort = el.dataset.sort; save(); window.dispatchEvent(new CustomEvent("portfolios:changed")); });
 
-/* ── 市場熱力圖（個股版）：面積＝漲跌幅規模，顏色＝漲跌，格內帶真 logo ── */
+/* ── 個股熱力圖（Treemap）：面積＝漲跌幅權重，格與格緊貼，格內透明底 icon ── */
+const heatIcon = (x) => {
+  const cid = S.cryptoLogos?.[String(x.symbol).toUpperCase()];
+  if (cid) return `<img class="hicon" src="${cid}" alt="" loading="lazy" onerror="this.style.display='none'">`;
+  const id = S.logos?.[x.key];
+  if (id) return `<img class="hicon" src="https://s3-symbol-logo.tradingview.com/${encodeURIComponent(id)}--big.svg" alt="" loading="lazy" onerror="this.style.display='none'">`;
+  return `<span class="hicon-txt">${esc(String(x.name).trim().slice(0, 1))}</span>`;
+};
 export function viewHeat() {
   const rows = uni().filter((x) => x.market !== "指數" && S.quotes[x.key] && S.quotes[x.key].change != null)
     .map((x) => ({ x, q: S.quotes[x.key] }));
   const ind = industryFlow().slice().sort((a, b) => (b.totalNet || 0) - (a.totalNet || 0));
   if (!rows.length) return `${head()}${emptyCard("市場熱力圖", "市場資料尚未更新")}`;
   rows.sort((a, b) => Math.abs(b.q.change || 0) - Math.abs(a.q.change || 0));
-  const top = rows.filter((r) => r.x.market === "台股").slice(0, 10).concat(rows.filter((r) => r.x.market !== "台股").slice(0, 6));
-  const maxChg = Math.max(...top.map((r) => Math.abs(r.q.change || 0)), 1);
-  const blocks = top.map(({ x, q }) => {
-    const w = Math.abs(q.change || 0) / maxChg;
-    const up = (q.change || 0) >= 0;
-    const bg = up ? `rgba(255,77,79,${0.14 + w * 0.5})` : `rgba(36,194,111,${0.14 + w * 0.5})`;
-    const k = x.key;
-    return `<a href="#/stock/${encodeURIComponent(k)}" style="flex:${1 + Math.round(w * 4)};min-width:96px;background:${bg};border-radius:12px;padding:9px 10px;text-decoration:none;color:#fff;display:flex;flex-direction:column;justify-content:center;gap:5px;min-height:${62 + Math.round(w * 46)}px">
-      <span class="logo" style="width:24px;height:24px;flex:none">${stockLogo(k, x.name, x.symbol, "logo")}</span>
-      <div style="font-size:12.5px;font-weight:700;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(x.name)}</div>
-      <div style="font-family:var(--mono);font-size:12px;opacity:.95">${q.change != null ? pct(q.change) : "—"}</div>
-    </a>`;
+  const pick = rows.filter((r) => r.x.market === "台股").slice(0, 10)
+    .concat(rows.filter((r) => r.x.market !== "台股").slice(0, 2));
+  const wOf = (r) => Math.abs(r.q.change || 0) || 0.3;
+  const pw = (r) => Math.pow(wOf(r), 0.55);
+  const maxW = Math.max(...pick.map(wOf), 0.3);
+  const total = pick.reduce((s, r) => s + pw(r), 0) || 1;
+  const H = 320;
+  const groups = [pick.slice(0, 6), pick.slice(6, 12)].filter((g) => g.length);
+  const blocks = groups.map((g) => {
+    const gsum = g.reduce((s, r) => s + pw(r), 0) || 1;
+    const h = Math.max(116, Math.min(196, Math.round(H * gsum / total)));
+    return `<div style="display:flex;gap:2px;height:${h}px">${g.map(({ x, q }) => {
+      const w = wOf({ q });
+      const share = (pw({ q }) / gsum) * 100;
+      const inten = (0.30 + (w / maxW) * 0.52).toFixed(2);
+      const up = (q.change || 0) >= 0;
+      const bg = up ? `rgba(226,58,58,${inten})` : `rgba(26,150,105,${inten})`;
+      const narrow = share < 16;
+      return `<a href="#/stock/${encodeURIComponent(x.key)}" style="flex:0 0 calc(${share.toFixed(1)}% - 2px);min-width:0;background:${bg};border-radius:6px;padding:7px 8px;display:flex;flex-direction:column;gap:3px;text-decoration:none;color:#fff;overflow:hidden">
+        ${heatIcon(x)}
+        <div style="font-size:${narrow ? 10.5 : 11.5}px;font-weight:700;line-height:1.15;margin-top:auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(x.name)}</div>
+        ${narrow ? "" : `<div style="font-family:var(--mono);font-size:10.5px;opacity:.9">${q.price != null ? fmt(q.price, 2) : ""}</div>`}
+        <div style="font-family:var(--mono);font-size:${narrow ? 10 : 11}px;font-weight:700">${q.change != null ? pct(q.change) : "—"}</div>
+      </a>`;
+    }).join("")}</div>`;
   }).join("");
   const rise = rows.filter((r) => (r.q.change || 0) > 0).length, fall = rows.filter((r) => (r.q.change || 0) < 0).length;
   const indRows = ind.slice(0, 8).map((x, i) => {
@@ -385,8 +405,8 @@ export function viewHeat() {
   }).join("");
   return `${head()}
     <section class="xcard">
-      <div class="sec-h"><span class="ico">🔥</span><span class="tt">個股熱力圖</span><span class="sp"></span><span class="meta">面積＝漲跌幅</span></div>
-      <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:stretch">${blocks}</div>
+      <div class="sec-h"><span class="ico">🔥</span><span class="tt">個股熱力圖</span><span class="sp"></span><span class="meta">面積＝漲跌幅權重</span></div>
+      <div style="display:flex;flex-direction:column;gap:2px;border-radius:8px;overflow:hidden">${blocks}</div>
       <div class="row" style="margin-top:12px;gap:12px;flex-wrap:wrap">
         <span class="small muted">上漲 ${rise} 檔</span><span class="small muted">下跌 ${fall} 檔</span>
         <span class="small muted">${S.market?.date ? S.market.date.slice(4, 6) + "/" + S.market.date.slice(6, 8) : ""}</span>
