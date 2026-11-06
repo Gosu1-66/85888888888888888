@@ -458,7 +458,7 @@ export function viewAnalysis() {
     const all = uni().filter((u) => u.market !== "指數" && S.quotes[u.key] && S.quotes[u.key].change != null);
     const up = all.slice().sort((a, c) => S.quotes[c.key].change - S.quotes[a.key].change).slice(0, 8);
     const dn = all.slice().sort((a, c) => S.quotes[a.key].change - S.quotes[c.key].change).slice(0, 8);
-    const row = (u) => { const q = S.quotes[u.key]; return `<a class="rrow" style="grid-template-columns:minmax(0,1fr) auto" href="#/stock/${encodeURIComponent(u.key)}"><div class="rmid"><div class="nm">${esc(u.name)}</div><div class="sub">${esc(u.symbol)}</div></div><div class="rpx"><div class="p ${tone(q.change)}" style="font-size:14px">${pct(q.change)}</div></div></a>`; };
+    const row = (u) => { const q = S.quotes[u.key]; return `<a class="rrow" style="grid-template-columns:minmax(0,1fr) auto" href="#/stock/${encodeURIComponent(u.key)}"><div class="rmid"><div class="nm">${esc(u.name)}</div><div class="sub">${esc(u.market)} · ${esc(u.symbol)}</div></div><div class="rpx"><div class="p ${tone(q.change)}" style="font-size:14px">${pct(q.change)}</div></div></a>`; };
     return `<section class="xcard"><div class="sec-h"><span class="ico">📈</span><span class="tt">漲幅排行</span></div>${up.map(row).join("")}</section>
       <section class="xcard"><div class="sec-h"><span class="ico">📉</span><span class="tt">跌幅排行</span></div>${dn.map(row).join("")}</section>`;
   })();
