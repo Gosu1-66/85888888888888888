@@ -7,7 +7,7 @@
 //   industryEst：半導體／通信網路熱門成分股估算（T86 收不到的通訊類，改由成分股加總；單位：股）
 //   daytrade  ：TWTB4U 當日沖銷統計（股數／金額）
 // 前端一律以「張」（/1000）或「億」（/1e8，僅法人彙總為元）顯示，並標註「盤後估算」。
-import { writeFileSync } from "node:fs";
+import { writeFileSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
@@ -32,8 +32,8 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /* ── 1. 指數（mis 即時，無 CORS 故由 server 端抓） ── */
 async function fetchIndices() {
-  const codes = ["tse_t00.tw", "tse_o00.tw", "tse_t17.tw", "tse_t13.tw", "tse_t31.tw", "tse_t21.tw", "tse_t02.tw"];
-  const ms = new Map([["tse_t00.tw", "t00"], ["tse_o00.tw", "o00"], ["tse_t17.tw", "t17"], ["tse_t13.tw", "t13"], ["tse_t31.tw", "t31"], ["tse_t21.tw", "t21"], ["tse_t02.tw", "t02"]]);
+  const codes = ["tse_t00.tw", "otc_o00.tw", "tse_t24.tw", "tse_t17.tw", "tse_t13.tw", "tse_t31.tw"];
+  const ms = new Map([["tse_t00.tw", "t00"], ["otc_o00.tw", "o00"], ["tse_t24.tw", "t24"], ["tse_t17.tw", "t17"], ["tse_t13.tw", "t13"], ["tse_t31.tw", "t31"]]);
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
       const j = await get(`${misBase}?ex_ch=${codes.join("|")}&json=1`);
@@ -67,6 +67,7 @@ async function fetchBreadth(date) {
       const row = data.find((r) => String(r[0]).includes(label));
       if (!row) return null;
       const parse = (v) => { const m = String(v).match(/[\d,]+/); return m ? parseInt(m[0].replace(/,/g, ""), 10) : 0; };
+      // 第一欄：全體（含上櫃），第二欄：上市
       return { all: parse(row[1]), tw: parse(row[2]) };
     };
     const rise = find("上漲"), fall = find("下跌"), flat = find("持平");
@@ -110,6 +111,7 @@ async function fetchT86(date, selectType) {
   const rows = j?.data || [];
   const out = [];
   for (const r of rows) {
+    // fields: 代號 名稱 外陸資買進 外陸資賣出 外陸資買賣超 外資自營買進 外資自營賣出 外資自營買賣超 投信買進 投信賣出 投信買賣超 自營買進 自營賣出 自營買賣超 自營(自行)買進 自營(自行)賣出 自營(自行)買賣超 自營(避險)買進 自營(避險)賣出 自營(避險)買賣超 三大法人買賣超
     const n = (v) => parseFloat(String(v).replace(/,/g, "")) || 0;
     out.push({
       code: r[0], name: r[1],
@@ -150,7 +152,95 @@ function estSub(all) {
   return est;
 }
 
-/* ── 6. 當日沖銷（TWTB4U） ── */
+/* ── 6. 信用交易（MI_MARGN；融資餘額/融券張數與當日增減） ── */
+const num = (v) => parseFloat(String(v == null ? "" : v).replace(/[,%]/g, "").trim()) || 0;
+async function fetchMargin(date) {
+  try {
+    const j = await twse(`exchangeReport/MI_MARGN?date=${date}&selectType=MS`);
+    const t = (j?.tables || []).find((x) => String(x.title || "").includes("信用交易")) || (j?.tables || [])[0];
+    if (!t || !t.data) return null;
+    const idx = (label) => t.data.findIndex((r) => String(r[0]).includes(label));
+    const get = (label, col) => {
+      const i = idx(label);
+      return i < 0 ? null : num(t.data[i][col]);
+    };
+    // fields: 項目 / 買進 / 賣出 / 現金償還 / 前日餘額 / 今日餘額 / 次日餘額
+    const marginLots = get("融資(交易單位)", 5);
+    const marginLotsPrev = get("融資(交易單位)", 4);
+    const shortLots = get("融券(交易單位)", 5);
+    const shortLotsPrev = get("融券(交易單位)", 4);
+    const marginAmt = get("融資金額(仟元)", 5);
+    const marginAmtPrev = get("融資金額(仟元)", 4);
+    return {
+      date,
+      marginLots: marginLots == null ? null : marginLots * 1000,      // 交易單位→股
+      marginLotsChg: marginLots == null || marginLotsPrev == null ? null : (marginLots - marginLotsPrev) * 1000,
+      shortLots: shortLots == null ? null : shortLots * 1000,
+      shortLotsChg: shortLots == null || shortLotsPrev == null ? null : (shortLots - shortLotsPrev) * 1000,
+      marginAmt: marginAmt == null ? null : marginAmt * 1000,          // 仟元→元
+      marginAmtChg: marginAmt == null || marginAmtPrev == null ? null : (marginAmt - marginAmtPrev) * 1000,
+    };
+  } catch (e) { process.stdout.write(`✗ margin ${e.message}\n`); return null; }
+}
+
+/* ── 6b. 期交所台指期（日盤／盤後夜盤） ── */
+async function fetchFutures() {
+  const post = async (mt) => {
+    for (let i = 0; i < 3; i++) {
+      try {
+        const r = await fetch("https://mis.taifex.com.tw/futures/api/getQuoteList", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "User-Agent": UA, Accept: "application/json", Referer: "https://mis.taifex.com.tw/futures/" },
+          body: JSON.stringify({ MarketType: mt, SymbolType: "F", SortColumn: "", SortType: "", PageNo: 1, TotalPage: 1 }),
+        });
+        const txt = await r.text();
+        if (txt.trim().startsWith("{")) return JSON.parse(txt)?.RtData?.QuoteList || [];
+      } catch (e) { /* retry */ }
+      await new Promise((s) => setTimeout(s, 700));
+    }
+    process.stdout.write(`✗ futures MT${mt} no json\n`);
+    return [];
+  };
+  const num = (v) => { const n = parseFloat(String(v || "").replace(/,/g, "")); return isNaN(n) ? null : n; };
+  const pick = (list, suffix) => {
+    const cands = list.filter((x) => new RegExp("^TXF[A-Z0-9]{2}-" + suffix + "$").test(String(x.SymbolID)));
+    if (!cands.length) return null;
+    cands.sort((a, c) => (num(c.CTotalVolume) || 0) - (num(a.CTotalVolume) || 0));
+    const x = cands[0];
+    const price = num(x.CLastPrice), ref = num(x.CRefPrice);
+    if (!price) return null;
+    return {
+      price, ref,
+      change: ref ? price - ref : null,
+      pct: ref ? ((price - ref) / ref) * 100 : null,
+      vol: num(x.CTotalVolume),
+      symbol: String(x.SymbolID), contract: String(x.DispCName || "").trim(),
+    };
+  };
+  const [day, night] = [await post("0"), await post("1")];
+  const reg = pick(day, "F");
+  const ah = pick(night, "M");
+  if (reg) reg.chart = await chart1M(reg.symbol, "0");
+  if (ah) ah.chart = await chart1M(ah.symbol, "1");
+  return { regular: reg, afterHours: ah, updated: new Date().toISOString() };
+}
+
+/* 期交所 1 分鐘走勢（回傳收盤價序列） */
+async function chart1M(symbolID, mt) {
+  try {
+    const r = await fetch("https://mis.taifex.com.tw/futures/api/getChartData1M", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "User-Agent": UA, Accept: "application/json", Referer: "https://mis.taifex.com.tw/futures/" },
+      body: JSON.stringify({ SymbolID: symbolID, MarketType: mt, SymbolType: "F" }),
+    });
+    const txt = await r.text();
+    if (!txt.trim().startsWith("{")) return [];
+    const ticks = JSON.parse(txt)?.RtData?.Ticks || [];
+    return ticks.map((t) => parseFloat(String(t[4] || ""))).filter((v) => !isNaN(v)).filter((_, i) => i % 2 === 0);
+  } catch (e) { process.stdout.write(`✗ chart1M ${e.message}\n`); return []; }
+}
+
+/* ── 7. 當日沖銷（TWTB4U） ── */
 async function fetchDaytrade(date) {
   try {
     const j = await twse(`exchangeReport/TWTB4U?date=${date}`);
@@ -197,6 +287,7 @@ async function main() {
     fetchInstitutionDays(),
     fetchAllT86(useDate),
   ]);
+  // 最新一日的法人「完整」資料（days 只存扁平欄位）；無資料日（假日/尚未發布）自動回退到前一有資料日
   const instToday = instDays.length ? await fetchInstitutions(instDays[0].date) : null;
   const rank = { foreign: [], trust: [], dealer: [] };
   for (const r of t86.all) {
@@ -206,6 +297,19 @@ async function main() {
   }
   for (const k of ["foreign", "trust", "dealer"]) rank[k].sort((a, b) => b.net - a.net);
 
+  // T86 若全為 0（盤後資料尚未發布或抓取失敗），保留上一次的產業／排行資料，避免把既有數字覆寫成 0
+  let prev = null;
+  try { prev = JSON.parse(readFileSync(join(ROOT, "market.json"), "utf8")); } catch { prev = null; }
+  const t86Empty = !t86.all.length || t86.byIndustry.every((x) => !x.foreignNet && !x.trustNet && !x.dealerNet);
+  if (t86Empty && prev && Array.isArray(prev.industry) && prev.industry.length) {
+    process.stdout.write("! T86 全空，沿用前一版 industry／instRank\n");
+    t86.byIndustry = (prev.industry || []).map((x) => ({ ...x, stocks: 0 }));
+    t86.all = [];
+    rank.foreign = (prev.instRank?.foreign || []).map((x) => ({ ...x }));
+    rank.trust = (prev.instRank?.trust || []).map((x) => ({ ...x }));
+    rank.dealer = (prev.instRank?.dealer || []).map((x) => ({ ...x }));
+  }
+
   const out = {
     updated: new Date().toISOString(), date: useDate,
     indices,
@@ -214,8 +318,24 @@ async function main() {
     instRank: rank,
     industry: t86.byIndustry.map((x) => ({ code: x.code, name: x.name, foreignNet: x.foreignNet, trustNet: x.trustNet, dealerNet: x.dealerNet, totalNet: x.totalNet })),
     industryEst: estSub(t86.all),
-    daytrade: await fetchDaytrade(useDate),
+    daytrade: null,
+    margin: null,
+    futures: null,
   };
+  // 台指期（日盤／夜盤）；抓不到就沿用上一版
+  const fut = await fetchFutures();
+  const pf = prev?.futures || null;
+  const mergedFut = {
+    regular: fut?.regular || pf?.regular || null,
+    afterHours: fut?.afterHours || pf?.afterHours || null,
+    updated: fut?.updated || pf?.updated || null,
+  };
+  out.futures = (mergedFut.regular || mergedFut.afterHours) ? mergedFut : null;
+  // 當沖／信用交易若抓不到或全 0，沿用上一版，避免覆寫成空資料
+  const daytrade = await fetchDaytrade(useDate);
+  out.daytrade = daytrade && daytrade.total && daytrade.total.shares ? daytrade : (prev?.daytrade || null);
+  const mg = await fetchMargin(useDate);
+  out.margin = mg || prev?.margin || null;
   writeFileSync(join(ROOT, "market.json"), JSON.stringify(out));
   process.stdout.write(`done: market.json updated=${out.updated} indices=${indices.length} industries=${out.industry.length}\n`);
 }
