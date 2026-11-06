@@ -457,3 +457,21 @@ a.idx-big { text-decoration: none; color: inherit; }
   .idx-row { grid-template-columns: minmax(0,1fr) auto 56px; }
   .isp svg { width: 56px; }
 }
+/* ── 指數詳情／K 線互動（v3-14） ── */
+a.idx-row { text-decoration: none; color: inherit; border-radius: 10px; }
+a.idx-row:hover { background: rgba(255,255,255,.035); }
+.idx-row { grid-template-columns: minmax(0,1fr) auto 80px 14px; }
+.go { color: #6b7280; font-size: 15px; text-align: right; }
+.idxv-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin: 2px 0 4px; }
+.idxv-px { font-family: var(--mono); font-size: 30px; font-weight: 800; line-height: 1.1; }
+.idxv-dl { font-size: 13px; font-weight: 700; margin-top: 4px; }
+.idxv-sub { text-align: right; }
+.idxv-sub .sub { font-size: 12px; color: #8b939e; }
+#stk-chart, #idxv-chart { width: 100%; display: block; cursor: crosshair; touch-action: none; }
+canvas#stk-chart { border-radius: 10px; }
+@media (max-width: 520px) {
+  .idx-row { grid-template-columns: minmax(0,1fr) auto 56px 12px; }
+  .idxv-head { align-items: flex-start; flex-direction: column; gap: 4px; }
+  .idxv-px { font-size: 26px; }
+  .idxv-sub { text-align: left; }
+}
