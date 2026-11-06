@@ -182,6 +182,7 @@ document.addEventListener("click", (e) => {
 /* ── 版面骨架（頂部列 + 跑馬燈 + 內容 + 四頁導覽） ── */
 function init() {
   if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+  document.documentElement.setAttribute("data-updown", S.set?.updown === "us" ? "us" : "tw");
   const root = $("#root");
   root.innerHTML = `<header class="topbar">
       <button type="button" class="back" id="tb-back" data-act="go-back" style="display:none">‹</button>
