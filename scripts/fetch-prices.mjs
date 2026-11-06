@@ -129,6 +129,33 @@ async function fetchChart(sym) {
   return out;
 }
 
+/* ── 4b. Yahoo 掛掉時的備援：TWSE STOCK_DAY 月資料（上市） ── */
+async function fetchTwseMonthly(code) {
+  const out = [];
+  const now = new Date();
+  for (let back = 11; back >= 0; back--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - back, 1);
+    const ym = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}01`;
+    try {
+      const j = await fetchJson(`https://www.twse.com.tw/exchangeReport/STOCK_DAY?response=json&date=${ym}&stockNo=${encodeURIComponent(code)}`, 2);
+      for (const row of j?.data || []) {
+        const m = String(row[0] || "").match(/(\d+)\/(\d+)\/(\d+)/);
+        if (!m) continue;
+        const o = num(row[3]), h = num(row[4]), l = num(row[5]), c = num(row[6]);
+        if (o == null || c == null) continue;
+        const ts = Math.round(Date.UTC(+m[1] + 1911, +m[2] - 1, +m[3]) / 1000) + 3600;
+        out.push([ts, o, h ?? o, l ?? o, c, Math.round(num(row[1]) || 0)]);
+      }
+    } catch (e) { /* 該月無資料，略過 */ }
+    await sleep(150);
+  }
+  const seen = new Map();
+  for (const r of out) seen.set(r[0], r);
+  const arr = [...seen.values()].sort((a, b) => a[0] - b[0]);
+  if (!arr.length) throw new Error(`TWSE 月資料無 ${code}`);
+  return arr;
+}
+
 const FUGLE_KEY = process.env.FUGLE_API_KEY || "";
 async function fetchFugleQuote(sym) {
   const r = await fetch(`https://api.fugle.tw/marketdata/v1.0/stock/intraday/quote/${encodeURIComponent(sym)}`, {
@@ -158,6 +185,14 @@ function needCodes(market, watch, allRows) {
     .map(([c]) => c);
   byAmt.forEach(push);
 
+  // 漲跌幅前段（熱力圖／漲跌排行挑的是純漲跌幅，成交值小的也會上榜）
+  const byChg = Object.entries(allRows)
+    .filter(([, r]) => r.change != null)
+    .sort((a, b) => Math.abs(b[1].change || 0) - Math.abs(a[1].change || 0))
+    .slice(0, 160)
+    .map(([c]) => c);
+  byChg.forEach(push);
+
   // ETF（含 00 開頭主動式 ETF）
   Object.keys(allRows).filter((c) => /^00/.test(c)).slice(0, 140).forEach(push);
 
@@ -173,9 +208,26 @@ async function main() {
   let prevPrices = null;
   try { prevPrices = JSON.parse(readFileSync(join(ROOT, "prices.json"), "utf8")); } catch { /* ignore */ }
 
-  const [tw, tpex, val] = await Promise.all([fetchTwseAll(), fetchTpexAll(), fetchValuation()]);
+  // 三大來源任一失敗都不致命：沿用前一版資料，避免整條 workflow 掛掉
+  const safe = async (label, fn, fallback) => {
+    try { return await fn(); } catch (e) {
+      process.stdout.write(`⚠ ${label} 失敗（${e.message}），沿用舊資料\n`);
+      return fallback;
+    }
+  };
+  const tw = await safe("TWSE 全市場", fetchTwseAll, {});
+  const tpex = await safe("TPEx 全市場", fetchTpexAll, {});
+  const val = await safe("BWIBBU 估值", fetchValuation, {});
   const allRows = { ...tw };
   for (const [k, v] of Object.entries(tpex)) if (!allRows[k]) allRows[k] = v;
+  if (!Object.keys(allRows).length && prevPrices?.quotes) {
+    for (const [k, q] of Object.entries(prevPrices.quotes)) {
+      const code = k.replace(/^台股:/, "");
+      if (k !== `台股:${code}`) continue;
+      allRows[code] = { price: q.price, prev: q.prev, name: q.name, board: q.board, vol: q.vol, amount: 0, change: null };
+    }
+    process.stdout.write("⚠ 全市場來源皆失敗 → 沿用舊報價\n");
+  }
 
   const quotes = {};
   const nowSec = Math.round(Date.now() / 1000);
@@ -218,19 +270,35 @@ async function main() {
   let ok = 0, fail = 0;
   const skipCandles = process.env.SKIP_CANDLES === "1";
   if (skipCandles) process.stdout.write("SKIP_CANDLES=1 → 只更新報價，日 K 沿用舊檔\n");
-  for (const code of skipCandles ? [] : mine) {
+  const grab = async (code) => {
     const board = allRows[code]?.board || "上市";
     const sym = board === "上櫃" ? `${code}.TWO` : `${code}.TW`;
     try {
       const cs = await fetchChart(sym);
       candleMap.set(code, cs);
-      ok++;
-      if (ok % 20 === 0) process.stdout.write(`  …已抓 ${ok}/${mine.length}\n`);
     } catch (e) {
-      fail++;
-      candleMap.set(code, null);
+      // Yahoo 被限流或抓不到時，上市股改用證交所月資料備援
+      if (board === "上櫃") throw e;
+      const cs = await fetchTwseMonthly(code);
+      candleMap.set(code, cs);
+      process.stdout.write(`  ↺ ${code} 改用 TWSE 月資料補 ${cs.length} 根\n`);
     }
+  };
+  for (const code of skipCandles ? [] : mine) {
+    try { await grab(code); ok++; if (ok % 20 === 0) process.stdout.write(`  …已抓 ${ok}/${mine.length}\n`); }
+    catch (e) { fail++; candleMap.set(code, null); }
     await sleep(120);
+  }
+  // 第一輪失敗的（多半是被 Yahoo 限流）再給一輪機會
+  const retry = [...candleMap.entries()].filter(([, v]) => v === null).map(([c]) => c);
+  if (retry.length && !skipCandles) {
+    process.stdout.write(`↻ 第二輪重試 ${retry.length} 檔\n`);
+    let ok2 = 0;
+    for (const code of retry) {
+      try { await sleep(400); await grab(code); ok2++; fail--; } catch (e) { /* 仍失敗 */ }
+    }
+    process.stdout.write(`  第二輪成功 ${ok2} 檔\n`);
+    ok += ok2;
   }
   process.stdout.write(`日 K 完成：成功 ${ok}、失敗 ${fail}\n`);
 
