@@ -68,8 +68,32 @@ function fillTicker() {
 }
 
 /* ── 渲染 ── */
+const MIN_STOCK_BARS = 60;
+let lastSafeHash = location.hash || "#/home";
+
+/* 防守：任何入口（含舊連結、搜尋、自選）進到日 K 不足 60 根的個股頁都會被擋下，
+   避免出現「有報價但無 K 線」的空白頁 */
+function guardStockRoute() {
+  const m = location.hash.match(/^#\/stock\/(.+)$/);
+  if (!m) return true;
+  if (!S.file) return true;                     // 資料還沒載完，先放行
+  const key = decodeURIComponent(m[1]);
+  if (!key.includes(":")) return true;
+  const bars = (S.file?.candles?.[key] || []).length;
+  const q = S.quotes?.[key];
+  if (bars >= MIN_STOCK_BARS) return true;
+  if (q && typeof q.price === "number") {
+    toast(`這檔的日 K 還在補抓（目前 ${bars} 根，需 ${MIN_STOCK_BARS} 根）`);
+    return false;
+  }
+  toast(`這檔還沒有報價與日 K（${key.split(":").pop()}）`);
+  return false;
+}
+
 function render() {
   try {
+    if (!guardStockRoute()) { location.hash = lastSafeHash; return; }
+    lastSafeHash = location.hash || "#/home";
     const { path, params } = parseRoute();
     const name = String(path || "/").replace(/^\/+/, "").split("/")[0] || "home";
     if (!VIEWS[name]) { location.hash = "#/home"; return; }
