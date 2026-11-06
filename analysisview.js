@@ -403,7 +403,7 @@ export function viewAnalysis() {
     ${(dt?.list || []).slice(0, 5).map((x) => {
       const k = keyOf("台股", String(x.code).trim());
       const nm = uni().find((u) => u.key === k)?.name || String(x.name).trim();
-      return `<a class="rrow" style="grid-template-columns:minmax(0,1fr) auto" href="#/stock/${encodeURIComponent(k)}"><div class="rmid"><div class="nm">${esc(nm)}</div><div class="sub">${esc(String(x.code).trim())}</div></div><div class="rpx"><div class="p" style="font-size:14px">${zhang(x.shares)}</div></div></a>`;
+      return `<a class="rrow" style="grid-template-columns:minmax(0,1fr) auto" href="#/stock/${encodeURIComponent(k)}"><div class="rmid"><div class="nm">${esc(nm)}</div><div class="sub">${esc(String(x.code).trim())}${/A$/.test(String(x.code).trim()) ? `<span class="mini-chip">ETF</span>` : ""}</div></div><div class="rpx"><div class="p" style="font-size:14px">${zhang(x.shares)}</div></div></a>`;
     }).join("") || `<p class="small muted">尚無資料</p>`}
   </section>
 
