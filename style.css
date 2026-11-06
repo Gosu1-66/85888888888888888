@@ -377,14 +377,16 @@ nav.bottom-nav { grid-template-columns: repeat(4, 1fr); background: rgba(12,13,1
 .chip2.on { background: rgba(217,177,106,.18); border-color: rgba(217,177,106,.45); color: #f0cf8e; font-weight: 700; }
 .legend { display: flex; gap: 12px; flex-wrap: wrap; font-size: 11px; color: #8b939e; margin-top: 6px; }
 .legend i { display: inline-block; width: 10px; height: 2px; margin-right: 4px; vertical-align: middle; border-radius: 2px; }
+/* 內層 logo（放在 .logo 圓底裡） */
+.logo-in { position: relative; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; font-weight: 800; color: #14181c; font-size: 13px; }
 /* 熱力圖格內 icon（透明底，固定方形不變形） */
 .hicon { width: 20px; height: 20px; object-fit: contain; display: block; flex: none; border-radius: 4px; }
 .hicon-txt { width: 20px; height: 20px; flex: none; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: rgba(255,255,255,.18); font-size: 12px; font-weight: 800; }
 /* 圓角 Logo 基底（任何容器都要有尺寸） */
-.logo { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 50%; background: #fff; overflow: hidden; flex: none; font-size: 13px; font-weight: 800; color: #14181c; }
+.logo { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 50%; background: #fff; overflow: hidden; flex: none; font-size: 13px; font-weight: 800; color: #14181c; position: relative; }
 .logo img { width: 100%; height: 100%; object-fit: contain; display: block; padding: 3px; }
 .logo > span { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; }
 /* 列表行圓角 Logo（全站統一） */
-.rrow .logo, .fncard .logo, .logo.md { width: 34px; height: 34px; border-radius: 50%; background: #fff; overflow: hidden; flex: none; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 800; color: #14181c; }
+.rrow .logo, .fncard .logo, .logo.md { width: 34px; height: 34px; border-radius: 50%; background: #fff; overflow: hidden; flex: none; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 800; color: #14181c; position: relative; }
 .rrow .logo img, .logo.md img { width: 100%; height: 100%; object-fit: contain; display: block; padding: 3px; }
 .rrow .logo span, .logo.md span { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; }
