@@ -59,7 +59,7 @@ function fillTicker() {
   // 固定像素速度（約 52px/s），窄螢幕不會慢到像卡住
   const setSpeed = () => {
     const half = (el.scrollWidth || 0) / 2;
-    if (half > 20) el.style.animationDuration = `${Math.max(8, Math.round(half / 52))}s`;
+    if (half > 20) el.style.animationDuration = `${Math.max(9, Math.round(half / 68))}s`;
   };
   setSpeed();
   setTimeout(setSpeed, 300);
