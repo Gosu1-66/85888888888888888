@@ -78,7 +78,13 @@ function guardStockRoute() {
   if (!m) return true;
   if (!S.file) return true;                     // 資料還沒載完，先放行
   const key = decodeURIComponent(m[1]);
-  if (!key.includes(":")) return true;
+  const MARKETS_OK = ["台股", "美股", "加密貨幣", "指數"];
+  const mk = key.split(":")[0];
+  if (!key.includes(":") || !MARKETS_OK.includes(mk)) {
+    // key 格式錯誤（例如直接打 #/stock/TRX）→ 不進空白頁
+    toast("這個標的代號格式不正確");
+    return false;
+  }
   // 加密貨幣的 K 線由前端直連 Binance 取得，不看排程檔
   if (key.startsWith("加密貨幣:")) return !!(S.quotes?.[key] && typeof S.quotes[key].price === "number");
   const bars = (S.file?.candles?.[key] || []).length;
