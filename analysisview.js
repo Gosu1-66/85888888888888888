@@ -15,7 +15,7 @@ import { CATALOG, HOT_STOCKS, ETF_LIST, INDUSTRIES, universe } from "./catalog.j
 import { refreshQuotes, loadCandles, SOURCE_LABEL } from "./quotes.js";
 import {
   refreshMarket, indices, breadth, institutions, instRank,
-  industryFlow, industryEst, daytrade, greedIndex, marketTone,
+  industryFlow, industryEst, daytrade, margin, greedIndex, marketTone,
   hotPicks, etfMetrics, scanner, turnoverTop, STALE_MSG
 } from "./marketdata.js";
 import { palette, drawDonut, drawTechnical } from "./charts.js";
@@ -291,6 +291,7 @@ export function viewAnalysis() {
   const ind = industryFlow().slice().sort((a, c) => (c.totalNet || 0) - (a.totalNet || 0));
   const g = greedIndex();
   const dt = daytrade();
+  const mg = margin();
   const rank = instRank() || {};
   const priceOf = (code) => { const k = keyOf("台股", String(code).trim()); return S.quotes[k]?.price; };
   const amtOf = (code, net) => { const p = priceOf(code); return p && net ? net * p : null; };
@@ -355,6 +356,17 @@ export function viewAnalysis() {
       <div><div class="k">平盤</div><div class="v">${b.flat}</div></div>
       <div><div class="k">全市場</div><div class="v" style="font-size:14px">${b.riseAll}↑ ${b.fallAll}↓</div></div>
     </div>` : `<p class="small muted">尚無資料</p>`}
+  </section>
+
+  <section class="xcard">
+    <div class="sec-h"><span class="ico">💳</span><span class="tt">信用交易況</span><span class="sp"></span><span class="meta">${mg?.date ? esc(String(mg.date).slice(4, 6) + "/" + String(mg.date).slice(6, 8)) : ""}</span></div>
+    ${mg ? `<div class="stat4" style="border-top:0;padding-top:0">
+      <div><div class="k">融資金額</div><div class="v" style="font-size:14px">${mg.marginAmt != null ? yi(mg.marginAmt) : "—"}</div></div>
+      <div><div class="k">融資增減</div><div class="v ${tone(mg.marginAmtChg)}" style="font-size:14px">${mg.marginAmtChg != null ? (mg.marginAmtChg > 0 ? "+" : "") + yi(mg.marginAmtChg) : "—"}</div></div>
+      <div><div class="k">融券餘額</div><div class="v" style="font-size:14px">${mg.shortLots != null ? zhang(mg.shortLots) : "—"}</div></div>
+      <div><div class="k">融券增減</div><div class="v ${tone(-(mg.shortLotsChg || 0))}" style="font-size:14px">${mg.shortLotsChg != null ? (mg.shortLotsChg > 0 ? "+" : "") + zhang(mg.shortLotsChg) : "—"}</div></div>
+    </div>
+    <p class="small muted" style="margin-top:8px">融資增加代表散戶槓桿偏多；融券增加代表空方部位上升。</p>` : `<p class="small muted">資料尚未更新（下次排程後顯示）。</p>`}
   </section>
 
   <section class="xcard">
