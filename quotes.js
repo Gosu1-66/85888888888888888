@@ -75,7 +75,7 @@ export function quotesFromFile(file) {
   for (const [key, q] of Object.entries(file.quotes)) {
     if (typeof q?.price !== "number") continue;
     const change = q.prev ? ((q.price - q.prev) / q.prev) * 100 : 0;
-    out[key] = { price: q.price, change, time: (q.time || 0) * 1000, source: "delayed" };
+    out[key] = { price: q.price, change, time: (q.time || 0) * 1000, source: "delayed", name: q.name || "", board: q.board || "", vol: q.vol || 0 };
   }
   return out;
 }
