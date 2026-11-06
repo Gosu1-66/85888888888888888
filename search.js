@@ -9,24 +9,27 @@ import { buildSeries } from "./indicators.js";
 import { drawTechnical } from "./charts.js";
 import { stockLogo, sparkLine } from "./home.js";
 
-/* ── 列表視圖 ── */
-function viewList() {
+function searchGroups() {
   const q = (S.q || "").trim().toUpperCase();
   const u = uni();
   const hits = q ? u.filter((x) => x.symbol.includes(q) || x.name.includes(q) || (x.industry || "").includes(q)) : u;
-  const groups = [
+  const all = [
     ["自選", S.set.watch.map((k) => u.find((x) => x.key === k)).filter(Boolean)],
     ["台股", hits.filter((x) => x.market === "台股")],
     ["美股", hits.filter((x) => x.market === "美股")],
     ["加密貨幣", hits.filter((x) => x.market === "加密貨幣")],
     ["指數", hits.filter((x) => x.market === "指數")],
   ].filter(([, arr]) => arr.length);
+  // 有搜尋詞時只按市場分組，避免命中結果同時出現在「自選」而重複
+  const groups = q ? all.filter(([label]) => label !== "自選") : all;
+  return { q, u, hits, groups };
+}
 
-  const row = (x) => {
-    const k = x.key, qq = S.quotes[k];
-    const w = S.set.watch.includes(k);
-    const logo = stockLogo(k, x.name, x.symbol, "logo");
-    return `<a class="rrow side" href="#/stock/${encodeURIComponent(k)}">
+function searchRow(x) {
+  const k = x.key, qq = S.quotes[k];
+  const w = S.set.watch.includes(k);
+  const logo = stockLogo(k, x.name, x.symbol, "logo-in");
+  return `<a class="rrow side" href="#/stock/${encodeURIComponent(k)}">
       <span class="logo">${logo}</span>
       <span class="rmid">
         <div class="nm">${esc(x.name)}</div>
@@ -38,16 +41,30 @@ function viewList() {
       </span>
       <span class="rside">${qq ? sparkLine(k, 64, 22) : ""}</span>
     </a>`;
-  };
+}
 
+/** 搜尋結果區塊（可獨立重繪，輸入時不重建整個頁面） */
+export function searchBody() {
+  const { q, groups } = searchGroups();
+  return groups.length ? groups.map(([label, arr]) => `<section class="xcard">
+    <div class="sec-h"><span class="tt">${label}</span><span class="sp"></span><span class="meta">${arr.length}</span></div>
+    ${arr.slice(0, 20).map(searchRow).join("")}
+  </section>`).join("") : `<section class="xcard"><p class="small muted" style="padding:6px 0">找不到「${esc(q)}」，換個代號或名稱試試。</p></section>`;
+}
+
+/** 搜尋範圍與命中數文字 */
+export function searchCount() {
+  const { q, u, hits } = searchGroups();
+  return `搜尋範圍：${u.length} 檔內建與自訂標的${q ? `，「${esc(q)}」找到 ${hits.length} 檔` : ""}`;
+}
+
+/* ── 列表視圖 ── */
+function viewList() {
   return `<section class="xcard" style="padding:12px 14px">
     <div class="search-box"><span class="muted">🔍</span><input id="search-in" placeholder="搜尋股票、產業、題材、功能" value="${esc(S.q || "")}" autocomplete="off"></div>
-    <div class="small muted" style="margin-top:8px">搜尋範圍：${u.length} 檔內建與自訂標的${q ? `，「${esc(q)}」找到 ${hits.length} 檔` : ""}</div>
+    <div class="small muted" id="s-count" style="margin-top:8px">${searchCount()}</div>
   </section>
-  ${groups.map(([label, arr]) => `<section class="xcard">
-    <div class="sec-h"><span class="tt">${label}</span><span class="sp"></span><span class="meta">${arr.length}</span></div>
-    ${arr.slice(0, 20).map(row).join("") || `<p class="small muted">無</p>`}
-  </section>`).join("")}`;
+  <div id="s-results">${searchBody()}</div>`;
 }
 
 /* ── 個股詳情 ── */
@@ -206,15 +223,20 @@ registerAction("submit-alert-s", () => {
   window.dispatchEvent(new CustomEvent("portfolios:changed"));
 });
 
-/* 列表頁輸入 */
+/* 列表頁輸入：即時過濾（不重建整頁，避免輸入時失焦） */
 export function bindSearchInput() {
   const inp = $("#search-in");
   if (!inp) return;
-  const go = () => {
-    const v = inp.value.trim();
-    if (!v) return;
-    S.q = v;
-    window.dispatchEvent(new CustomEvent("portfolios:changed"));
+  let timer = null;
+  const refresh = () => {
+    S.q = inp.value.trim();
+    const box = $("#s-results");
+    const cnt = $("#s-count");
+    if (box) box.innerHTML = searchBody();
+    if (cnt) cnt.textContent = searchCount();
   };
-  inp.addEventListener("keydown", (e) => { if (e.key === "Enter") go(); });
+  inp.addEventListener("input", () => { clearTimeout(timer); timer = setTimeout(refresh, 160); });
+  inp.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") { e.preventDefault(); clearTimeout(timer); refresh(); inp.blur(); }
+  });
 }
