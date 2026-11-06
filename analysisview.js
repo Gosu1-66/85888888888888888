@@ -285,33 +285,97 @@ function renderStrategy() {
 
 /* ---------- 主 view ---------- */
 export function viewAnalysis() {
-  const updated = S.market && S.market.updated;
-  const ageTxt = updated ? ageText(Date.parse(updated)) : "—";
-  const stale = (typeof STALE_MSG === "string" && STALE_MSG) ? `<div class="banner warn">${esc(STALE_MSG)}</div>` : "";
+  const idxs = indices();
+  const b = breadth();
+  const inst = institutions();
+  const ind = industryFlow().slice().sort((a, c) => (c.totalNet || 0) - (a.totalNet || 0));
+  const g = greedIndex();
+  const dt = daytrade();
+  const rank = instRank() || {};
+  const priceOf = (code) => { const k = keyOf("台股", String(code).trim()); return S.quotes[k]?.price; };
+  const amtOf = (code, net) => { const p = priceOf(code); return p && net ? net * p : null; };
+  const dateTxt = S.market?.date ? S.market.date.slice(4, 6) + "/" + S.market.date.slice(6, 8) : "";
+
+  const idxCards = idxs.map((i) => `<div class="fncard" style="min-width:104px">
+      <div class="small muted" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(i.name.replace("發行量加權股價指數", "加權指數"))}</div>
+      <div class="num" style="font-size:15px;font-weight:800;margin-top:4px">${fmt(i.price, 2)}</div>
+      <div class="small ${tone(i.changePct)}">${i.changePct != null ? pct(i.changePct) : "—"}</div>
+    </div>`).join("");
+
+  const flowRow = (x, sign) => {
+    const v = x.totalNet || 0;
+    const w = Math.min(100, Math.abs(v) / (Math.abs(ind[0]?.totalNet || 1)) * 100);
+    return `<div class="rrow" style="grid-template-columns:minmax(0,1fr) auto">
+      <div class="rmid"><div class="nm">${esc(x.name)}</div><div class="barline" style="margin-top:6px"><i style="width:${w}%;background:${sign > 0 ? "var(--up)" : "var(--down)"}"></i></div></div>
+      <div class="rpx"><div class="p ${tone(v)}" style="font-size:14px">${(v >= 0 ? "+" : "") + zhang(v)}</div></div>
+    </div>`;
+  };
+  const buy = ind.slice(0, 5), sell = ind.slice(-5).reverse();
+
+  const topRows = (rank.foreign || []).slice().sort((a, c) => c.net - a.net).slice(0, 5).map((x) => {
+    const k = keyOf("台股", String(x.code).trim());
+    const nm = uni().find((u) => u.key === k)?.name || String(x.name).trim();
+    const amt = amtOf(x.code, x.net);
+    return `<a class="rrow" href="#/stock/${encodeURIComponent(k)}"><div class="rmid"><div class="nm">${esc(nm)}</div><div class="sub">${esc(String(x.code).trim())} · 外資買超</div></div><div class="rpx"><div class="p ${tone(amt)}" style="font-size:14px">${amt ? yi(amt) : zhang(x.net)}</div></div></a>`;
+  }).join("");
+
+  const heatTop = ind.slice(0, 6).map((x) => `<a href="#/heat" style="flex:1;min-width:60px;padding:8px;border-radius:10px;background:${(x.totalNet || 0) >= 0 ? "rgba(255,77,79,.18)" : "rgba(36,194,111,.18)"};text-decoration:none;color:#fff"><div style="font-size:11.5px;font-weight:700">${esc(x.name)}</div><div class="small" style="font-family:var(--mono);margin-top:3px">${zhang(x.totalNet)}</div></a>`).join("");
+
+  const gParts = g ? g.parts.map((p) => `<div class="rrow" style="grid-template-columns:minmax(0,1fr) auto"><div class="rmid"><div class="nm">${esc(p.label)}</div></div><div class="rpx"><span class="small">${esc(p.text)}</span></div></div>`).join("") : "";
 
   return `
-  <div class="view-analysis">
-    ${stale}
-    <div class="banner info">
-      市場資料時間：${esc(ageTxt)}　<span class="muted small">（盤後統計／規則式估算，僅供參考）</span>
-    </div>
+  <section class="xcard" style="padding:14px">
+    <div class="sec-h" style="margin:0 0 10px"><span class="ico">🌐</span><span class="tt">指數總覽</span><span class="sp"></span><span class="meta">${esc(dateTxt)}</span></div>
+    <div class="fn-row" style="margin:0 -4px">${idxCards || '<p class="small muted">尚無資料</p>'}</div>
+  </section>
 
-    ${renderIndices()}
+  <section class="xcard">
+    <div class="sec-h"><span class="ico">🏦</span><span class="tt">法人產業資金</span><span class="sp"></span><span class="meta">買超前 5／賣超前 5</span></div>
+    ${buy.length ? buy.map((x) => flowRow(x, 1)).join("") : `<p class="small muted">尚無資料</p>`}
+    <div class="small muted" style="margin:10px 0 4px">賣超</div>
+    ${sell.length ? sell.map((x) => flowRow(x, -1)).join("") : ""}
+  </section>
 
-    <div class="grid g2">
-      ${renderBreadth()}
-      ${renderGreed()}
-    </div>
+  <section class="xcard">
+    <div class="sec-h"><span class="ico">💰</span><span class="tt">外資買超金額（估算）</span><span class="sp"></span><span class="meta">金額＝張數×現價</span></div>
+    ${topRows || '<p class="small muted">尚無資料</p>'}
+  </section>
 
-    ${renderInstitutions()}
-    ${renderIndustry()}
-    ${renderEtfs()}
-    ${renderStrategy()}
+  <section class="xcard">
+    <div class="sec-h"><span class="ico">🔥</span><span class="tt">市場熱力圖</span><span class="sp"></span><a href="#/heat" class="small" style="color:var(--gold2);text-decoration:none">看完整 ›</a></div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">${heatTop}</div>
+  </section>
 
-    <footer class="small muted" style="margin-top:16px;text-align:center">
-      本工具所有數據來自公開與非即時來源，標示「估算／盤後」者尤須留意；僅為個人看盤輔助，<strong>非投資建議</strong>，交易風險自負。
-    </footer>
-  </div>`;
+  <section class="xcard">
+    <div class="sec-h"><span class="ico">📉</span><span class="tt">漲跌家數</span><span class="sp"></span><span class="meta">${b ? "成交 " + yi(b.amount) : ""}</span></div>
+    ${b ? `<div class="stat4" style="border-top:0;padding-top:0">
+      <div><div class="k">上漲</div><div class="v up">${b.rise}</div></div>
+      <div><div class="k">下跌</div><div class="v down">${b.fall}</div></div>
+      <div><div class="k">平盤</div><div class="v">${b.flat}</div></div>
+      <div><div class="k">全市場</div><div class="v" style="font-size:14px">${b.riseAll}↑ ${b.fallAll}↓</div></div>
+    </div>` : `<p class="small muted">尚無資料</p>`}
+  </section>
+
+  <section class="xcard">
+    <div class="sec-h"><span class="ico">🛡</span><span class="tt">市場避險情緒</span><span class="sp"></span><span class="meta">規則式</span></div>
+    ${g ? `<div class="score-row"><div class="ring" style="background:conic-gradient(from -90deg,#c9a259 0deg,#f0cf8e ${(g.score / 100) * 360}deg,#22252a ${(g.score / 100) * 360}deg 360deg)"><span class="n">${g.score}</span></div>
+      <div class="sc-grid"><div class="c"><div class="k">評級</div><div class="v" style="font-size:13px">${esc(g.label)}</div></div>
+      <div class="c"><div class="k">三大法人</div><div class="v ${inst ? tone(inst.total?.net) : ""}" style="font-size:13px">${inst ? yi(inst.total?.net) : "—"}</div></div>
+      <div class="c"><div class="k">當沖量</div><div class="v" style="font-size:13px">${dt?.total?.shares ? zhang(dt.total.shares) : "—"}</div></div>
+      <div class="c"><div class="k">市場情緒</div><div class="v" style="font-size:13px">${g.score}</div></div></div></div>
+      ${gParts}` : `<p class="small muted">尚無資料</p>`}
+  </section>
+
+  <section class="xcard">
+    <div class="sec-h"><span class="ico">⚡</span><span class="tt">當沖熱門</span><span class="sp"></span><a href="#/daytrade" class="small" style="color:var(--gold2);text-decoration:none">排行 ›</a></div>
+    ${(dt?.list || []).slice(0, 5).map((x) => {
+      const k = keyOf("台股", String(x.code).trim());
+      const nm = uni().find((u) => u.key === k)?.name || String(x.name).trim();
+      return `<a class="rrow" href="#/stock/${encodeURIComponent(k)}"><div class="rmid"><div class="nm">${esc(nm)}</div><div class="sub">${esc(String(x.code).trim())}</div></div><div class="rpx"><div class="p" style="font-size:14px">${zhang(x.shares)}</div></div></a>`;
+    }).join("") || `<p class="small muted">尚無資料</p>`}
+  </section>
+
+  <p class="small muted" style="text-align:center;margin:14px 0 4px">資料為 TWSE 盤後統計；金額為估算，僅供參考、非投資建議。</p>`;
 }
 
 /* ---------- 插入後：非同步載入 ETF K 線並算報酬風險 ---------- */
