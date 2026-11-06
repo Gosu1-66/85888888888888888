@@ -11,7 +11,7 @@ import {
   keyOf, currencyOf, MARKETS, holdingStats, portfolioStats,
   toTWD, computePosition, toHoldings
 } from "./portfolio.js";
-import { stockLogo } from "./home.js";
+import { stockLogo, sparkLine } from "./home.js";
 import { CATALOG, HOT_STOCKS, ETF_LIST, INDUSTRIES, universe } from "./catalog.js";
 import { refreshQuotes, loadCandles, SOURCE_LABEL } from "./quotes.js";
 import {
@@ -342,7 +342,7 @@ export function viewAnalysis() {
       const q = S.quotes[u.key], w = wOf(u);
       const inten = (0.30 + (w / maxW) * 0.52).toFixed(2);
       const up = (q.change || 0) >= 0;
-      const bg = up ? `rgba(226,58,58,${inten})` : `rgba(26,150,105,${inten})`;
+      const bg = up ? `rgba(var(--up-rgb),${inten})` : `rgba(var(--down-rgb),${inten})`;
       return `<a href="#/stock/${encodeURIComponent(u.key)}" style="flex:0 0 calc(${((w / gsum) * 100).toFixed(1)}% - 2px);min-width:0;background:${bg};padding:7px;display:flex;flex-direction:column;gap:3px;text-decoration:none;color:#fff;overflow:hidden">
         ${hicon(u)}
         <div style="font-size:11px;font-weight:700;line-height:1.15;margin-top:auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(u.name)}</div>
@@ -353,74 +353,184 @@ export function viewAnalysis() {
 
   const gParts = g ? g.parts.map((p) => `<div class="rrow" style="grid-template-columns:minmax(0,1fr) auto"><div class="rmid"><div class="nm">${esc(p.label)}</div></div><div class="rpx"><span class="small">${esc(p.text)}</span></div></div>`).join("") : "";
 
-  return `
-  <section class="xcard" style="padding:14px">
-    <div class="sec-h" style="margin:0 0 10px"><span class="ico">🌐</span><span class="tt">指數總覽</span><span class="sp"></span><span class="meta">${esc(dateTxt)}</span></div>
-    <div class="fn-row" style="margin:0 -4px">${idxCards || '<p class="small muted">尚無資料</p>'}</div>
-  </section>
+  /* ── 分頁（對齊參考 App：總覽／ETF／排行／籌碼／策略／風險） ── */
+  const TABS = ["總覽", "ETF", "排行", "籌碼", "策略", "風險"];
+  const tab = TABS.includes(S.anaTab) ? S.anaTab : "總覽";
+  const tabsHtml = `<div class="ana-tabs">${TABS.map((t) => `<button type="button" class="ana-tab${t === tab ? " on" : ""}" data-act="ana-tab" data-tab="${t}">${t}</button>`).join("")}</div>`;
 
-  <section class="xcard">
-    <div class="sec-h"><span class="ico">🏦</span><span class="tt">法人產業資金</span><span class="sp"></span><span class="meta">買超前 5／賣超前 5</span></div>
-    ${buy.length ? buy.map((x) => flowRow(x, 1)).join("") : `<p class="small muted">尚無資料</p>`}
-    <div class="small muted" style="margin:10px 0 4px">賣超</div>
-    ${sell.length ? sell.map((x) => flowRow(x, -1)).join("") : ""}
-  </section>
+  const risePct = b && b.rise + b.fall > 0 ? Math.round((b.rise / (b.rise + b.fall)) * 100) : 0;
+  const instNet = inst?.total?.net ?? null;
+  const fNet = inst?.foreign?.net ?? null, tNet = inst?.trust?.net ?? null, dNet = inst?.dealer?.net ?? null;
+  const maxInst = Math.max(Math.abs(fNet || 0), Math.abs(tNet || 0), Math.abs(dNet || 0), 1);
+  const instCol = (label, v) => `<div class="icol">
+      <div class="k">${label}</div>
+      <div class="v ${v == null ? "" : tone(v)}">${v == null ? "—" : yi(v)}</div>
+      <div class="barline"><i style="width:${Math.min(100, Math.abs(v || 0) / maxInst * 100)}%;background:${(v || 0) >= 0 ? "var(--up)" : "var(--down)"}"></i></div>
+    </div>`;
 
+  /* 指數大卡（橫向滑動，第一張帶走勢） */
+  const idxBig = idxs.map((i, n) => {
+    const nm = String(i.name).replace("發行量加權股價指數", "加權指數");
+    const spark = n === 0 ? sparkLine(keyOf("指數", "^TWII"), 120, 30) : "";
+    return `<div class="idx-big">
+      <div class="ib-nm">${esc(nm)}</div>
+      <div class="ib-px ${tone(i.changePct)}">${i.price != null ? fmt(i.price, 0) : "—"}</div>
+      <div class="ib-dl"><span class="${tone(i.change)}">${i.change != null ? (i.change > 0 ? "+" : "") + fmt(i.change, 0) : "—"}</span><em>｜</em><b class="${tone(i.changePct)}">${i.changePct != null ? pct(i.changePct) : "—"}</b></div>
+      <div class="ib-sp">${spark}</div>
+    </div>`;
+  }).join("");
+
+  const breadthCard = b ? `<section class="xcard half">
+      <div class="sec-h"><span class="ico">📊</span><span class="tt">漲跌家數</span><span class="sp"></span><span class="date-chip">${esc(dateTxt)}</span></div>
+      <div class="triple">
+        <div><div class="k">上漲</div><div class="v up">${b.rise}</div></div>
+        <div><div class="k">平盤</div><div class="v">${b.flat}</div></div>
+        <div><div class="k">下跌</div><div class="v down">${b.fall}</div></div>
+      </div>
+      <div class="barline split"><i style="width:${risePct}%;background:var(--up)"></i><i style="width:${100 - risePct}%;background:var(--down)"></i></div>
+    </section>` : "";
+
+  const greedCard = g ? `<section class="xcard half">
+      <div class="sec-h"><span class="ico">🧭</span><span class="tt">貪婪指數</span><span class="sp"></span><span class="date-chip">${esc(dateTxt)}</span></div>
+      <div class="triple" style="grid-template-columns:1fr">
+        <div><div class="v ${g.score < 45 ? "down" : g.score > 55 ? "up" : ""}" style="font-size:24px">${g.score}<span class="small muted" style="font-size:12px">/100</span></div><div class="k">${esc(g.label)}</div></div>
+      </div>
+      <div class="barline rainbow"><i style="width:${Math.max(4, g.score)}%"></i></div>
+    </section>` : "";
+
+  const instBlock = `<section class="xcard">
+      <div class="sec-h"><span class="ico">🏦</span><span class="tt">法人資金動向</span><span class="sp"></span><span class="date-chip">${esc(dateTxt)}</span></div>
+      <div class="small muted">合計買賣超</div>
+      <div class="bigfig ${tone(instNet)}">${instNet != null ? yi(instNet) : "—"}</div>
+      <div class="chip-row">
+        <span class="mini-chip ${instNet == null ? "" : instNet >= 0 ? "up" : "down"}">${instNet == null ? "—" : instNet >= 0 ? "三大法人買超" : "三大法人賣超"}</span>
+        <span class="mini-chip">外資 ${fNet == null ? "—" : yi(fNet)}</span>
+        <span class="mini-chip">投信 ${tNet == null ? "—" : yi(tNet)}</span>
+      </div>
+      <div class="icols">${instCol("外資", fNet)}${instCol("投信", tNet)}${instCol("自營商", dNet)}</div>
+    </section>`;
+
+  const industryBlock = `<section class="xcard">
+      <div class="sec-h"><span class="ico">🏭</span><span class="tt">法人產業資金</span><span class="sp"></span><span class="date-chip">${esc(dateTxt)}</span></div>
+      <div class="two-col">
+        <div><div class="mini-chip up" style="margin-bottom:8px;display:inline-block">買超</div>${buy.slice(0, 3).map((x) => flowRow(x, 1)).join("") || `<p class="small muted">尚無</p>`}</div>
+        <div><div class="mini-chip down" style="margin-bottom:8px;display:inline-block">賣超</div>${sell.slice(0, 3).map((x) => flowRow(x, -1)).join("") || `<p class="small muted">尚無</p>`}</div>
+      </div>
+    </section>`;
+
+  const heatBlock = `<section class="xcard">
+      <div class="sec-h"><span class="ico">🔥</span><span class="tt">市場熱力圖</span><span class="sp"></span><a href="#/heat" class="small" style="color:var(--gold2);text-decoration:none">看完整 ›</a></div>
+      ${heatTop}
+    </section>`;
+
+  const marginBlock = `<section class="xcard">
+      <div class="sec-h"><span class="ico">💳</span><span class="tt">信用交易況</span><span class="sp"></span><span class="date-chip">${mg?.date ? esc(String(mg.date).slice(4, 6) + "/" + String(mg.date).slice(6, 8)) : ""}</span></div>
+      ${mg ? `<div class="stat4" style="border-top:0;padding-top:0">
+        <div><div class="k">融資金額</div><div class="v" style="font-size:14px">${mg.marginAmt != null ? yi(mg.marginAmt) : "—"}</div></div>
+        <div><div class="k">融資增減</div><div class="v ${tone(mg.marginAmtChg)}" style="font-size:14px">${mg.marginAmtChg != null ? (mg.marginAmtChg > 0 ? "+" : "") + yi(mg.marginAmtChg) : "—"}</div></div>
+        <div><div class="k">融券餘額</div><div class="v" style="font-size:14px">${mg.shortLots != null ? zhang(mg.shortLots) : "—"}</div></div>
+        <div><div class="k">融券增減</div><div class="v ${tone(-(mg.shortLotsChg || 0))}" style="font-size:14px">${mg.shortLotsChg != null ? (mg.shortLotsChg > 0 ? "+" : "") + zhang(mg.shortLotsChg) : "—"}</div></div>
+      </div><p class="small muted" style="margin-top:8px">融資增加代表散戶槓桿偏多；融券增加代表空方部位上升。</p>` : `<p class="small muted">資料尚未更新。</p>`}
+    </section>`;
+
+  const daytradeBlock = `<section class="xcard">
+      <div class="sec-h"><span class="ico">⚡</span><span class="tt">當沖熱門</span><span class="sp"></span><a href="#/daytrade" class="small" style="color:var(--gold2);text-decoration:none">排行 ›</a></div>
+      ${(dt?.list || []).slice(0, 5).map((x) => {
+        const k = keyOf("台股", String(x.code).trim());
+        const nm = uni().find((u) => u.key === k)?.name || String(x.name).trim();
+        return `<a class="rrow" style="grid-template-columns:minmax(0,1fr) auto" href="#/stock/${encodeURIComponent(k)}"><div class="rmid"><div class="nm">${esc(nm)}</div><div class="sub">${esc(String(x.code).trim())}${/A$/.test(String(x.code).trim()) ? `<span class="mini-chip">ETF</span>` : ""}</div></div><div class="rpx"><div class="p" style="font-size:14px">${zhang(x.shares)}</div></div></a>`;
+      }).join("") || `<p class="small muted">尚無資料</p>`}
+    </section>`;
+
+  /* 其他分頁內容 */
+  const etfRows = ETF_LIST.slice(0, 10).map((e) => {
+    const code = e.symbol, nm = e.name, kind = e.type;
+    const k = keyOf("台股", code), q = S.quotes[k];
+    return `<a class="rrow side" href="#/stock/${encodeURIComponent(k)}">
+      <span class="logo">${stockLogo(k, nm, code, "logo-in")}</span>
+      <span class="rmid"><div class="nm">${esc(nm)}</div><div class="sub">${esc(code)}<span class="mini-chip">${esc(kind)}</span></div></span>
+      <span class="rpx"><div class="p">${q ? fmt(q.price, 2) : "—"}</div><div class="d ${q ? tone(q.change) : "muted"}">${q ? pct(q.change) : "—"}</div></span>
+    </a>`;
+  }).join("");
+
+  const rankRows = (() => {
+    const all = uni().filter((u) => u.market !== "指數" && S.quotes[u.key] && S.quotes[u.key].change != null);
+    const up = all.slice().sort((a, c) => S.quotes[c.key].change - S.quotes[a.key].change).slice(0, 8);
+    const dn = all.slice().sort((a, c) => S.quotes[a.key].change - S.quotes[c.key].change).slice(0, 8);
+    const row = (u) => { const q = S.quotes[u.key]; return `<a class="rrow" style="grid-template-columns:minmax(0,1fr) auto" href="#/stock/${encodeURIComponent(u.key)}"><div class="rmid"><div class="nm">${esc(u.name)}</div><div class="sub">${esc(u.symbol)}</div></div><div class="rpx"><div class="p ${tone(q.change)}" style="font-size:14px">${pct(q.change)}</div></div></a>`; };
+    return `<section class="xcard"><div class="sec-h"><span class="ico">📈</span><span class="tt">漲幅排行</span></div>${up.map(row).join("")}</section>
+      <section class="xcard"><div class="sec-h"><span class="ico">📉</span><span class="tt">跌幅排行</span></div>${dn.map(row).join("")}</section>`;
+  })();
+
+  const chipRows = (["foreign", "trust", "dealer"]).map((type) => {
+    const arr = (rank[type] || []).slice().sort((a, c) => c.net - a.net).slice(0, 6);
+    const label = { foreign: "外資", trust: "投信", dealer: "自營商" }[type];
+    return `<section class="xcard"><div class="sec-h"><span class="ico">🧾</span><span class="tt">${label}買超</span><span class="sp"></span><span class="date-chip">${esc(dateTxt)}</span></div>
+      ${arr.map((x) => {
+        const k = keyOf("台股", String(x.code).trim());
+        const nm = uni().find((u) => u.key === k)?.name || String(x.name).trim();
+        const amt = amtOf(x.code, x.net);
+        return `<a class="rrow" style="grid-template-columns:minmax(0,1fr) auto" href="#/stock/${encodeURIComponent(k)}"><div class="rmid"><div class="nm">${esc(nm)}</div><div class="sub">${esc(String(x.code).trim())}</div></div><div class="rpx"><div class="p ${tone(amt)}" style="font-size:14px">${amt ? yi(amt) : zhang(x.net)}</div></div></a>`;
+      }).join("") || `<p class="small muted">尚無資料</p>`}
+    </section>`;
+  }).join("");
+
+  const strategyBlock = `<section class="xcard">
+      <div class="sec-h"><span class="ico">🎯</span><span class="tt">策略選股</span><span class="sp"></span><a href="#/scan" class="small" style="color:var(--gold2);text-decoration:none">完整選股 ›</a></div>
+      <p class="small muted">依技術面（均線、MACD、RSI）與籌碼條件篩選，點下方按鈕看完整清單。</p>
+      <a class="btn primary" href="#/scan" style="display:inline-flex;margin-top:8px">技術面選股</a>
+    </section>
+    <section class="xcard">
+      <div class="sec-h"><span class="ico">📐</span><span class="tt">估值工具</span></div>
+      <a class="btn" href="#/valuation" style="display:inline-flex">本益比／殖利率估算</a>
+    </section>`;
+
+  const riskBlock2 = `<section class="xcard">
+      <div class="sec-h"><span class="ico">🛡</span><span class="tt">市場避險情緒</span><span class="sp"></span><span class="date-chip">${esc(dateTxt)}</span></div>
+      ${g ? `<div class="score-row"><div class="ring" style="background:conic-gradient(from -90deg,#c9a259 0deg,#f0cf8e ${(g.score / 100) * 360}deg,#22252a ${(g.score / 100) * 360}deg 360deg)"><span class="n">${g.score}</span></div>
+        <div class="sc-grid"><div class="c"><div class="k">評級</div><div class="v" style="font-size:13px">${esc(g.label)}</div></div>
+        <div class="c"><div class="k">三大法人</div><div class="v ${inst ? tone(inst.total?.net) : ""}" style="font-size:13px">${inst ? yi(inst.total?.net) : "—"}</div></div>
+        <div class="c"><div class="k">當沖量</div><div class="v" style="font-size:13px">${dt?.total?.shares ? zhang(dt.total.shares) : "—"}</div></div>
+        <div class="c"><div class="k">市場情緒</div><div class="v" style="font-size:13px">${g.score}</div></div></div></div>
+        ${gParts}` : `<p class="small muted">尚無資料</p>`}
+    </section>
+    ${marginBlock}`;
+
+  const body = tab === "ETF" ? `<section class="xcard"><div class="sec-h"><span class="ico">🧺</span><span class="tt">ETF 觀察</span><span class="sp"></span><span class="meta">前 10 檔</span></div>${etfRows || `<p class="small muted">尚無資料</p>`}</section>`
+    : tab === "排行" ? rankRows
+    : tab === "籌碼" ? chipRows
+    : tab === "策略" ? strategyBlock
+    : tab === "風險" ? riskBlock2
+    : `
+  <section class="xcard" style="padding:12px 14px">
+    <div class="sec-h" style="margin:0 0 8px"><span class="ico">🌐</span><span class="tt">指數全覽</span><span class="sp"></span><a href="#/indexb" class="small" style="color:var(--gold2);text-decoration:none">全部 ›</a></div>
+    <div class="idx-scroll">${idxBig || '<p class="small muted">尚無資料</p>'}</div>
+  </section>
+  <div class="dual2">${breadthCard}${greedCard}</div>
+  ${instBlock}
+  ${industryBlock}
+  ${heatBlock}
+  ${marginBlock}
   <section class="xcard">
-    <div class="sec-h"><span class="ico">💰</span><span class="tt">外資買超金額（估算）</span><span class="sp"></span><span class="meta">金額＝張數×現價</span></div>
+    <div class="sec-h"><span class="ico">💰</span><span class="tt">外資買超金額（估算）</span><span class="sp"></span><span class="meta">張數×現價</span></div>
     ${topRows || '<p class="small muted">尚無資料</p>'}
   </section>
+  ${daytradeBlock}`;
 
-  <section class="xcard">
-    <div class="sec-h"><span class="ico">🔥</span><span class="tt">市場熱力圖</span><span class="sp"></span><a href="#/heat" class="small" style="color:var(--gold2);text-decoration:none">看完整 ›</a></div>
-    <div style="display:flex;gap:6px;flex-wrap:wrap">${heatTop}</div>
-  </section>
-
-  <section class="xcard">
-    <div class="sec-h"><span class="ico">📉</span><span class="tt">漲跌家數</span><span class="sp"></span><span class="meta">${b ? "成交 " + yi(b.amount) : ""}</span></div>
-    ${b ? `<div class="stat4" style="border-top:0;padding-top:0">
-      <div><div class="k">上漲</div><div class="v up">${b.rise}</div></div>
-      <div><div class="k">下跌</div><div class="v down">${b.fall}</div></div>
-      <div><div class="k">平盤</div><div class="v">${b.flat}</div></div>
-      <div><div class="k">全市場</div><div class="v" style="font-size:14px">${b.riseAll}↑ ${b.fallAll}↓</div></div>
-    </div>` : `<p class="small muted">尚無資料</p>`}
-  </section>
-
-  <section class="xcard">
-    <div class="sec-h"><span class="ico">💳</span><span class="tt">信用交易況</span><span class="sp"></span><span class="meta">${mg?.date ? esc(String(mg.date).slice(4, 6) + "/" + String(mg.date).slice(6, 8)) : ""}</span></div>
-    ${mg ? `<div class="stat4" style="border-top:0;padding-top:0">
-      <div><div class="k">融資金額</div><div class="v" style="font-size:14px">${mg.marginAmt != null ? yi(mg.marginAmt) : "—"}</div></div>
-      <div><div class="k">融資增減</div><div class="v ${tone(mg.marginAmtChg)}" style="font-size:14px">${mg.marginAmtChg != null ? (mg.marginAmtChg > 0 ? "+" : "") + yi(mg.marginAmtChg) : "—"}</div></div>
-      <div><div class="k">融券餘額</div><div class="v" style="font-size:14px">${mg.shortLots != null ? zhang(mg.shortLots) : "—"}</div></div>
-      <div><div class="k">融券增減</div><div class="v ${tone(-(mg.shortLotsChg || 0))}" style="font-size:14px">${mg.shortLotsChg != null ? (mg.shortLotsChg > 0 ? "+" : "") + zhang(mg.shortLotsChg) : "—"}</div></div>
-    </div>
-    <p class="small muted" style="margin-top:8px">融資增加代表散戶槓桿偏多；融券增加代表空方部位上升。</p>` : `<p class="small muted">資料尚未更新（下次排程後顯示）。</p>`}
-  </section>
-
-  <section class="xcard">
-    <div class="sec-h"><span class="ico">🛡</span><span class="tt">市場避險情緒</span><span class="sp"></span><span class="meta">規則式</span></div>
-    ${g ? `<div class="score-row"><div class="ring" style="background:conic-gradient(from -90deg,#c9a259 0deg,#f0cf8e ${(g.score / 100) * 360}deg,#22252a ${(g.score / 100) * 360}deg 360deg)"><span class="n">${g.score}</span></div>
-      <div class="sc-grid"><div class="c"><div class="k">評級</div><div class="v" style="font-size:13px">${esc(g.label)}</div></div>
-      <div class="c"><div class="k">三大法人</div><div class="v ${inst ? tone(inst.total?.net) : ""}" style="font-size:13px">${inst ? yi(inst.total?.net) : "—"}</div></div>
-      <div class="c"><div class="k">當沖量</div><div class="v" style="font-size:13px">${dt?.total?.shares ? zhang(dt.total.shares) : "—"}</div></div>
-      <div class="c"><div class="k">市場情緒</div><div class="v" style="font-size:13px">${g.score}</div></div></div></div>
-      ${gParts}` : `<p class="small muted">尚無資料</p>`}
-  </section>
-
-  <section class="xcard">
-    <div class="sec-h"><span class="ico">⚡</span><span class="tt">當沖熱門</span><span class="sp"></span><a href="#/daytrade" class="small" style="color:var(--gold2);text-decoration:none">排行 ›</a></div>
-    ${(dt?.list || []).slice(0, 5).map((x) => {
-      const k = keyOf("台股", String(x.code).trim());
-      const nm = uni().find((u) => u.key === k)?.name || String(x.name).trim();
-      return `<a class="rrow" style="grid-template-columns:minmax(0,1fr) auto" href="#/stock/${encodeURIComponent(k)}"><div class="rmid"><div class="nm">${esc(nm)}</div><div class="sub">${esc(String(x.code).trim())}${/A$/.test(String(x.code).trim()) ? `<span class="mini-chip">ETF</span>` : ""}</div></div><div class="rpx"><div class="p" style="font-size:14px">${zhang(x.shares)}</div></div></a>`;
-    }).join("") || `<p class="small muted">尚無資料</p>`}
-  </section>
-
-  <p class="small muted" style="text-align:center;margin:14px 0 4px">資料為 TWSE 盤後統計；金額為估算，僅供參考、非投資建議。</p>`;
+  return `${tabsHtml}${body}<p class="small muted" style="text-align:center;margin:14px 0 4px">資料為 TWSE 盤後統計；金額為估算，僅供參考、非投資建議。</p>`;
 }
 
-/* ---------- 插入後：非同步載入 ETF K 線並算報酬風險 ---------- */
-function renderEtfMetrics(m) {
+/* 行情頁二級分頁切換 */
+registerAction("ana-tab", (el) => {
+  const t = el?.dataset?.tab;
+  if (!t) return;
+  S.anaTab = t;
+  save();
+  document.querySelectorAll(".ana-tab").forEach((b) => b.classList.toggle("on", b.dataset.tab === t));
+  window.dispatchEvent(new CustomEvent("portfolios:changed"));
+});
+
+/* ---------- 插入後：非同步載入 ETF K 線並算報酬風險 ---------- */function renderEtfMetrics(m) {
   if (!m) return `<span class="small muted">—（無 K 線資料）</span>`;
   return `<div class="kpi-grid" style="margin:4px 0">
     <div><div class="small muted">3M</div><div class="num ${tone(m.ret3m)}">${m.ret3m != null ? pct(m.ret3m) : "—"}</div></div>
