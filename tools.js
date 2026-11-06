@@ -162,7 +162,7 @@ export function viewDaytrade() {
         return `<a class="rrow" style="grid-template-columns:22px 34px minmax(0,1fr) auto 64px" href="#/stock/${encodeURIComponent(k)}">
           <span class="rk ${i === 0 ? "g1" : i === 1 ? "g2" : i === 2 ? "g3" : "gx"}" style="width:20px;height:20px;font-size:11px">${i + 1}</span>
           <span class="logo">${stockLogo(k, nm, clean(x.code), "logo")}</span>
-          <span class="rmid"><div class="nm">${esc(nm)}</div><div class="sub">${esc(clean(x.code))}</div></span>
+          <span class="rmid"><div class="nm">${esc(nm)}</div><div class="sub">${esc(clean(x.code))}${/A$/.test(clean(x.code)) ? `<span class="mini-chip">ETF</span>` : ""}</div></span>
           <span class="rpx"><div class="p">${zhang(x.shares)}</div></div>
           <span class="rside">${sparkLine(k, 64, 22)}</span>
         </a>`;
