@@ -19,14 +19,14 @@ const nice = (v) => (Math.abs(v) >= 1000 ? v.toFixed(0) : Math.abs(v) >= 100 ? v
  * 技術分析圖：K 線 + 均線 / 成交量 / RSI / MACD。回傳 { redraw(hoverIndex), count }。
  * data 為 buildSeries 的輸出；台灣慣例紅漲綠跌。
  */
-export function drawTechnical(canvas, data, hover = -1) {
+export function drawTechnical(canvas, data, hover = -1, cssH = 540) {
   const P = palette();
-  const H = 540;
+  const H = cssH, k = cssH / 540;
   const { ctx, w } = setup(canvas, H);
   const padL = 6, padR = 52, n = data.length;
   const plotW = w - padL - padR, step = plotW / n, bodyW = Math.max(1, Math.min(10, step * 0.66));
   const x = (i) => padL + step * (i + 0.5);
-  const panels = [{ y: 4, h: 270 }, { y: 292, h: 52 }, { y: 360, h: 82 }, { y: 458, h: 78 }];
+  const panels = [{ y: 4 * k, h: 270 * k }, { y: 292 * k, h: 52 * k }, { y: 360 * k, h: 82 * k }, { y: 458 * k, h: 78 * k }];
   ctx.font = "11px ui-monospace, Menlo, monospace"; ctx.textBaseline = "middle";
 
   const frame = (p, lo, hi, ticks) => {
