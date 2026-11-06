@@ -87,7 +87,7 @@ export const fxRate = () => (Number.isFinite(+S.set.fxManual) && +S.set.fxManual
 export const fxSource = () => (S.set.fxManual ? "手動設定" : S.status.fx ? "自動（延遲）" : "預設值（尚未取得）");
 export const quoteOf = (h) => S.quotes[keyOf(h.market, h.symbol)] ?? null;
 export const holdings = () => toHoldings(S.data);
-export const uni = () => universe(S.set, S.data);
+export const uni = () => universe(S.set, S.data, S.quotes);
 
 /* ── 投資屬性測驗（規則式計分 0-100） ── */
 export function riskScore() {
