@@ -262,11 +262,12 @@ export function viewIndex() {
   const futRows = [];
   if (fut?.afterHours) futRows.push({ nm: "台指期盤後", sub: "夜盤", icon: "🌙", price: fut.afterHours.price, change: fut.afterHours.change, pct: fut.afterHours.pct, vol: fut.afterHours.vol });
   if (fut?.regular) futRows.push({ nm: "台指期", sub: "期貨", icon: "☀️", price: fut.regular.price, change: fut.regular.change, pct: fut.regular.pct, vol: fut.regular.vol });
-  const futHtml = (cat === "all" ? futRows : []).map((f) => `<div class="rrow idx-row">
+  const futHtml = (cat === "all" ? futRows : []).map((f, idx) => `<a class="rrow idx-row" href="#/indexv/${idx === 0 ? "fut-ah" : "fut-reg"}">
       <div class="rmid"><div class="nm">${esc(f.nm)} <span style="font-size:12px">${f.icon}</span></div><div class="sub">${esc(f.sub)}</div></div>
       <div class="rpx"><div class="p ${tone(f.pct)}" style="font-size:16px">${px(f.price)}</div><div class="d ${tone(f.pct)}">${f.change != null ? (f.change > 0 ? "+" : "") + fmt(f.change, 0) : "—"}${f.pct != null ? " · " + pct(f.pct) : ""}</div></div>
       <div class="isp"><span class="small muted" style="display:block;text-align:right;line-height:1.3">成交<br>${f.vol ? fmt(f.vol, 0) + " 口" : "—"}</span></div>
-    </div>`).join("");
+      <span class="go">›</span>
+    </a>`).join("");
   const totalRows = futHtml ? futRows.length + rows.length : rows.length;
 
   /* hero：有台指期盤後就用它（對齊參考 App），否則用加權 */
@@ -291,11 +292,16 @@ export function viewIndex() {
     return `<button class="ana-tab${cat === k ? " on" : ""}" data-act="idx-cat" data-cat="${k}">${label}${n ? `<sup>${n}</sup>` : ""}</button>`;
   }).join("");
 
-  const listRows = rows.map((i) => `<div class="rrow idx-row">
+  const listRows = rows.map((i) => {
+    const code = String(i.code || "").slice(0, 3);
+    const href = "#/indexv/" + encodeURIComponent(code);
+    return `<a class="rrow idx-row" href="${href}">
       <div class="rmid"><div class="nm">${esc(idxName(i))}</div><div class="sub">${esc(idxLabel(i.code))}</div></div>
       <div class="rpx"><div class="p ${tone(i.changePct)}" style="font-size:16px">${px(i.price)}</div><div class="d ${tone(i.changePct)}">${i.changePct != null ? pct(i.changePct) : "—"}</div></div>
       <div class="isp">${i.code === "t00" ? sparkLine(keyOf("指數", "^TWII"), 76, 24) : `<span class="small muted" style="display:block;text-align:right;line-height:1.3">前收<br>${i.prev ? fmt(i.prev, 2) : "—"}</span>`}</div>
-    </div>`).join("");
+      <span class="go">›</span>
+    </a>`;
+  }).join("");
 
   return `<section class="xcard">
       <div class="sec-h"><span class="ico">🧭</span><span class="tt">市場指數</span><span class="sp"></span><span class="meta">${esc(dateTxt)}</span></div>
