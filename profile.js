@@ -303,6 +303,16 @@ registerAction("save-entries", () => {
   save(); closeSheet(); toast("已儲存首頁入口設定");
   location.hash = "#/home";
 });
+/* 漲跌配色切換：tw=紅漲綠跌、us=綠漲紅跌 */
+function setUpDown(mode) {
+  S.set.updown = mode;
+  save();
+  document.documentElement.setAttribute("data-updown", mode === "us" ? "us" : "tw");
+  toast(mode === "us" ? "已切換為綠漲紅跌（美股慣例）" : "已切換為紅漲綠跌（台股慣例）");
+  window.dispatchEvent(new CustomEvent("portfolios:changed"));
+}
+registerAction("updown-tw", () => setUpDown("tw"));
+registerAction("updown-us", () => setUpDown("us"));
 registerAction("fx-save", () => {
   const v = parseFloat($("#fx-in").value);
   if (!isFinite(v) || v <= 0) { toast("請輸入有效匯率"); return; }
@@ -394,6 +404,7 @@ export function viewProfile() {
   const status = S.status || {};
   const manualKeys = Object.keys(S.set.manual || {});
   const cloudUser = S.set.cloud?.user;
+  const updown = S.set.updown === "us" ? "us" : "tw";
 
   const alertRows = alerts.length ? alerts.map((a) => {
     const nm = nameByKey(a.key);
@@ -482,6 +493,13 @@ export function viewProfile() {
       <button class="btn sm" data-act="fx-save">設定</button>
       <button class="btn sm" data-act="fx-auto">自動</button>
     </div>
+
+    <div class="h2" style="margin-top:16px">漲跌配色</div>
+    <div class="row" style="justify-content:flex-start;flex-wrap:wrap;gap:8px">
+      <button class="btn sm ${updown === "tw" ? "primary" : ""}" data-act="updown-tw">紅漲綠跌（台股）</button>
+      <button class="btn sm ${updown === "us" ? "primary" : ""}" data-act="updown-us">綠漲紅跌（美股）</button>
+    </div>
+    <div class="muted small" style="margin-top:6px">目前：${updown === "us" ? "綠漲紅跌" : "紅漲綠跌"}，套用到全站報價、熱力圖與走勢圖。</div>
 
     <div class="h2" style="margin-top:16px">備份與還原</div>
     <div class="row" style="justify-content:flex-start;flex-wrap:wrap">
