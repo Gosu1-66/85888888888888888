@@ -385,7 +385,7 @@ export function viewHeat() {
       const share = (pw({ q }) / gsum) * 100;
       const inten = (0.30 + (w / maxW) * 0.52).toFixed(2);
       const up = (q.change || 0) >= 0;
-      const bg = up ? `rgba(226,58,58,${inten})` : `rgba(26,150,105,${inten})`;
+      const bg = up ? `rgba(var(--up-rgb),${inten})` : `rgba(var(--down-rgb),${inten})`;
       const narrow = share < 16;
       return `<a href="#/stock/${encodeURIComponent(x.key)}" style="flex:0 0 calc(${share.toFixed(1)}% - 2px);min-width:0;background:${bg};border-radius:6px;padding:7px 8px;display:flex;flex-direction:column;gap:3px;text-decoration:none;color:#fff;overflow:hidden">
         ${heatIcon(x)}
