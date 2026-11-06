@@ -1,255 +1,187 @@
-// home.js — 首頁：盤後總覽、功能入口 9 格、市場情緒、熱門股、自選股、持股摘要、警報。
-import { $, esc, fmt, pct, tone, money, ageText, toast, badge, statusBanner, registerAction } from "./ui.js";
-import { S, save, fxRate, quoteOf, holdings, uni } from "./state.js";
+// home.js — 首頁（對齊參考 App「股市智投」概覽頁）：每日盤勢 AI 卡、橫滑功能卡、投資組合、自選股、熱門股。
+import { $, esc, fmt, pct, tone, toast, statusBanner, registerAction } from "./ui.js";
+import { S, save, holdings, uni } from "./state.js";
 import { keyOf } from "./portfolio.js";
 import { HOT_STOCKS } from "./catalog.js";
-import { indices, institutions, instRank, greedIndex, marketTone } from "./marketdata.js";
-import { palette, drawDonut } from "./charts.js";
+import { indices, institutions, breadth, industryFlow, daytrade, marketTone } from "./marketdata.js";
 
-const ENTRY_META = {
-  radar: { label: "雷達", icon: "📡", href: "#/radar" },
-  inst: { label: "法人排名", icon: "🏦", href: "#/inst" },
-  daytrade: { label: "當沖", icon: "⚡", href: "#/daytrade" },
-  scan: { label: "選股", icon: "🔍", href: "#/scan" },
-  tools: { label: "工具", icon: "🧰", href: "#/tools" },
-  watchlist: { label: "自選", icon: "⭐", act: "scroll-to", target: "watchlist" },
-  index: { label: "大盤", icon: "📈", href: "#/indexb" },
-  custom: { label: "自訂", icon: "🎛️", href: "#/profile?f=entries" },
-  cloud: { label: "雲端同步", icon: "☁️", href: "#/cloud" },
-};
-
-/* ── 漲跌色與單位 ── */
 const yi = (n) => (n == null || isNaN(n)) ? "—" : fmt(Math.round(n / 1e8), 0) + "億";
 
-/* ── 盤後總覽（指數 + 多空 + 法人） ── */
-function heroCards() {
-  const idxs = indices();
-  const top = (idxs.find((i) => i.code === "t00") || idxs[0]);
-  const two = idxs.find((i) => i.code === "o00");
-  const cards = [];
-  const card = (name, price, chg, p) => `<div class="idx-card compact">
-    <div class="small muted">${esc(name)}</div>
-    <div class="row" style="justify-content:space-between;align-items:baseline;gap:8px">
-      <span class="num">${price != null ? fmt(price, 2) : "—"}</span>
-      <span class="num small ${tone(p)}">${p != null ? pct(p) : "—"}</span>
-    </div>
-  </div>`;
-  if (top) cards.push(card(top.name || "加權指數", top.price, top.change, top.changePct));
-  if (two) cards.push(card(two.name || "櫃買指數", two.price, two.change, two.changePct));
-  const toneT = marketTone();
-  const toneHtml = toneT
-    ? `<span class="chip ${toneT.score >= 2 ? "bull" : toneT.score <= -2 ? "bear" : "mid"}">盤後 ${toneT.label}</span>`
-    : `<span class="chip mid">盤後資料尚未更新</span>`;
-  return `<section class="hero">
-    <div class="index-cards">${cards.length ? cards.join("") : `<div class="idx-card"><div class="small muted">指數</div><div class="num">—</div><div class="small muted">尚未載入 market.json</div></div>`}</div>
-    <div class="row" style="gap:6px;margin-top:8px;flex-wrap:wrap;align-items:center">${toneHtml}
-      <span class="small muted">三大法人 <span class="num ${tone(instNet())}">${yi(instNet())}</span></span>
-      <span class="small muted">外資 <span class="num ${tone(instNet("foreign"))}">${yi(instNet("foreign"))}</span></span>
-    </div>
-  </section>`;
-}
-function instNet(kind) {
-  const i = institutions();
-  if (!i) return null;
-  if (kind) return i[kind]?.net ?? null;
-  return i.total?.net ?? null;
-}
-
-/* ── 外資/投信/自營買超前 3 ── */
-function instTop() {
-  const r = instRank() || {};
-  const u = uni();
-  const sec = (type, label) => {
-    const arr = (r[type] || []).filter((x) => x.net > 0).slice(0, 3);
-    if (!arr.length) return "";
-    return `<div class="chips"><span class="chip">${label}</span>${arr.map((x) => {
-      const key = keyOf("台股", x.code);
-      const name = u.find((y) => y.key === key)?.name || x.name || x.code;
-      return `<a class="chip link" href="#/search?s=${encodeURIComponent(key)}">${esc(name)} <b>${(x.net / 1000).toFixed(0)}張</b></a>`;
-    }).join("")}</div>`;
-  };
-  return sec("foreign", "外資買超") + sec("trust", "投信買超") + sec("dealer", "自營買超");
-}
-
-/* ── 功能入口 ── */
-function entryGrid() {
-  const order = S.set.entries?.order || Object.keys(ENTRY_META);
-  const hidden = S.set.entries?.hidden || [];
-  const items = order.filter((k) => !hidden.includes(k) && ENTRY_META[k]).map((k) => {
-    const e = ENTRY_META[k];
-    const inner = `${e.icon}<span class="small">${e.label}</span>`;
-    return e.href ? `<a class="entry" href="${e.href}">${inner}</a>`
-      : `<button type="button" class="entry" data-act="${e.act}" data-target="${e.target}">${inner}</button>`;
-  }).join("");
-  return `<section class="card">
-    <h2 class="h2">功能入口</h2>
-    <div class="entry-grid">${items}</div>
-  </section>`;
-}
-
-/* ── 雷達（貪婪指數） ── */
-function radar() {
-  const g = greedIndex();
-  if (!g) return `<section class="card" id="radar"><h2 class="h2">市場情緒雷達</h2><p class="muted small">尚未取得市場資料（需 GitHub 排程更新 market.json）。</p></section>`;
-  const deg = Math.max(0, Math.min(100, g.score)) / 100 * 360;
-  return `<section class="card" id="radar">
-    <h2 class="h2">市場情緒雷達 <span class="tag ${g.score < 40 ? "bear" : g.score < 60 ? "mid" : "bull"}">${esc(g.label)}</span></h2>
-    <div class="row" style="align-items:center;gap:16px">
-      <div class="gauge-ring" style="background:conic-gradient(from -90deg, #ef4444 0deg, #f59e0b ${Math.max(deg / 2, 1)}deg, #16a34a ${deg}deg, #e5e7eb ${deg}deg 360deg)">
-        <div class="gauge-num">${g.score}</div>
-      </div>
-      <div class="small muted" style="flex:1">由漲跌家數、外資近 5 日、指數近 20 日與 RSI 規則式估算（0-100）。${esc(g.parts?.map((p) => p.text).join("；") || "")}</div>
-    </div>
-  </section>`;
-}
-
-/* ── 熱門股（一行一檔：公司圖示 / 代號名稱 / 價格漲跌 / 迷你走勢） ── */
-function stockLogo(key, name, sym) {
+/* ── 公司圖示（三級降級：幣種圖示 → TradingView logo → 字首） ── */
+export function stockLogo(key, name, sym, cls = "qrow-logo") {
   let h = 0;
   for (const c of String(sym)) h = (h * 31 + c.charCodeAt(0)) % 360;
   const clean = String(name || sym).replace(/[^\u4e00-\u9fa5A-Za-z0-9]/g, "");
   const ch = clean.slice(0, 1) || String(sym).slice(0, 1);
   const fallback = `<span class="lg-char" style="color:hsl(${h} 72% 74%)">${esc(ch)}</span>`;
-  const cid = S.cryptoLogos?.[String(sym).toUpperCase()];   // 加密貨幣：CoinGecko 官方圖示
-  if (cid) {
-    return `<span class="qrow-logo" style="background:#fff">
-      <img src="${cid}" alt="" loading="lazy" onerror="this.remove()">
-      ${fallback}
-    </span>`;
-  }
+  const cid = S.cryptoLogos?.[String(sym).toUpperCase()];
+  if (cid) return `<span class="${cls}" style="background:#fff"><img src="${cid}" alt="" loading="lazy" onerror="this.remove()">${fallback}</span>`;
   const id = S.logos?.[key];
-  if (id) {
-    return `<span class="qrow-logo" style="background:#fff">
-      <img src="https://s3-symbol-logo.tradingview.com/${encodeURIComponent(id)}--big.svg" alt="" loading="lazy" onerror="this.remove()">
-      ${fallback}
-    </span>`;
-  }
-  return `<span class="qrow-logo" style="background:hsl(${h} 38% 20%);border-color:hsl(${h} 45% 34%)">${fallback}</span>`;
+  if (id) return `<span class="${cls}" style="background:#fff"><img src="https://s3-symbol-logo.tradingview.com/${encodeURIComponent(id)}--big.svg" alt="" loading="lazy" onerror="this.remove()">${fallback}</span>`;
+  return `<span class="${cls}" style="background:hsl(${h} 38% 20%);border-color:hsl(${h} 45% 34%)">${fallback}</span>`;
 }
 
-function sparkLine(key) {
+/* ── 迷你走勢 ── */
+export function sparkLine(key, w = 60, h = 24) {
   const rows = S.file?.candles?.[key];
-  if (!rows || rows.length < 2) return `<svg class="spark" viewBox="0 0 64 26" preserveAspectRatio="none"></svg>`;
+  if (!rows || rows.length < 2) return `<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"></svg>`;
   const cs = rows.slice(-40).map((r) => r[4]);
   const min = Math.min(...cs), max = Math.max(...cs), rng = (max - min) || 1;
-  const pts = cs.map((c, i) => `${((i / (cs.length - 1)) * 62 + 1).toFixed(1)},${(24 - ((c - min) / rng) * 22).toFixed(1)}`).join(" ");
+  const pts = cs.map((c, i) => `${((i / (cs.length - 1)) * (w - 2) + 1).toFixed(1)},${(h - 2 - ((c - min) / rng) * (h - 4)).toFixed(1)}`).join(" ");
   const up = cs[cs.length - 1] >= cs[0];
-  return `<svg class="spark" viewBox="0 0 64 26" preserveAspectRatio="none"><polyline points="${pts}" fill="none" stroke="${up ? "var(--up)" : "var(--down)"}" stroke-width="1.5" stroke-linecap="round"/></svg>`;
+  return `<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><polyline points="${pts}" fill="none" stroke="${up ? "var(--up)" : "var(--down)"}" stroke-width="1.4" stroke-linecap="round"/></svg>`;
 }
 
-function hotStocks() {
-  const top = HOT_STOCKS.slice(0, 3);           // 首頁只露前 3 檔，其餘點「看更多」進列表
-  return `<section class="card">
-    <h2 class="h2">熱門股</h2>
-    <div class="qrows">${top.map((h) => {
+/* ── 每日盤勢 AI 卡 ── */
+function aiCard() {
+  const t = marketTone();
+  const b = breadth();
+  const inst = institutions();
+  const inds = industryFlow();
+  if (!t) {
+    return `<section class="ai-card"><div class="ai-top"><span class="ai-tag mid">資料更新中</span><span class="sp"></span><span class="when">—</span></div>
+      <h1 class="ai-title">市場資料尚未更新</h1>
+      <p class="ai-body">市場指數與法人資料由 GitHub 排程於盤後更新，稍後會自動補上。</p>
+      <div class="ai-foot">整合指數、新聞與台股事件</div></section>`;
+  }
+  const idx = indices().find((i) => i.code === "t00");
+  const best = inds.slice().sort((a, c) => (c.totalNet || 0) - (a.totalNet || 0));
+  const strong = best[0], weak = best[best.length - 1];
+  const dir = t.score >= 2 ? "盤中走強" : t.score <= -2 ? "盤中重挫" : "盤中震盪";
+  const title = `${esc((idx?.name || "台股").replace("發行量加權股價指數", "台股"))}${dir}${strong ? `，${esc(strong.name)}與${esc(weak?.name || "")}類股分歧` : ""}`;
+  const nl = inst?.total?.net != null ? `外資今日${inst.total.net >= 0 ? "轉買" : "賣超"} ${yi(Math.abs(inst.total.net))}` : "";
+  const body = [
+    b ? `上市上漲 ${b.rise} 檔、下跌 ${b.fall} 檔，成交金額 ${yi(b.amount)}。` : "",
+    strong ? `${strong.name}資金淨流入 ${yi(strong.totalNet)}，${weak?.name || ""}淨流出 ${yi(Math.abs(weak?.totalNet || 0))}。` : "",
+    nl ? `${nl}，籌碼面${inst.total.net >= 0 ? "偏多" : "偏空"}。` : "",
+  ].filter(Boolean).join("");
+  const date = S.market?.date ? `${S.market.date.slice(4, 6)}/${S.market.date.slice(6, 8)}` : "";
+  const labelCls = t.score >= 2 ? "bull" : t.score <= -2 ? "" : "mid";
+  return `<section class="ai-card" data-act="goto" data-href="#/market">
+    <div class="ai-top">
+      <span class="ai-tag ${labelCls}">${esc(t.label)}</span>
+      <span class="sp"></span>
+      <span class="when">${date} ${new Date().toTimeString().slice(0, 5)}</span>
+      <span class="chev" style="color:#7d858f">›</span>
+    </div>
+    <h1 class="ai-title">${title}</h1>
+    <p class="ai-body">${body}</p>
+    <div class="ai-chips"><span class="ai-chip">加權指數</span><span class="ai-chip">台指期</span><span class="ai-chip">外資</span></div>
+    <div class="ai-foot"><span>整合指數、新聞與台股事件</span><span class="sp"></span><span style="color:var(--gold)">AI ›</span></div>
+  </section>`;
+}
+
+/* ── 功能入口（可橫滑） ── */
+const FNS = [
+  { k: "radar", lb: "市場雷達", ic: "📡", href: "#/radar" },
+  { k: "inst", lb: "法人買超", ic: "🏦", href: "#/inst" },
+  { k: "daytrade", lb: "當沖排行", ic: "⚡", href: "#/daytrade" },
+  { k: "scan", lb: "技術面選股", ic: "📈", href: "#/scan" },
+  { k: "heat", lb: "市場熱力圖", ic: "🔥", href: "#/heat", hot: 1 },
+  { k: "tools", lb: "工具箱", ic: "🧰", href: "#/tools" },
+  { k: "watch", lb: "我的自選", ic: "⭐", act: "scroll-to", target: "watchlist" },
+  { k: "index", lb: "指數總覽", ic: "🧭", href: "#/indexb" },
+  { k: "custom", lb: "自訂", ic: "＋", href: "#/profile?f=entries" },
+];
+function fnRow() {
+  return `<div class="fn-row">${FNS.map((f) => {
+    const inner = `<span class="fic">${f.ic}</span><span class="flb">${esc(f.lb)}</span>`;
+    return f.href
+      ? `<a class="fncard ${f.hot ? "hot" : ""}" href="${f.href}">${inner}</a>`
+      : `<button type="button" class="fncard" data-act="${f.act}" data-target="${f.target}">${inner}</button>`;
+  }).join("")}</div>`;
+}
+
+/* ── 投資組合卡 ── */
+function portfolioCard() {
+  const hs = holdings().filter((h) => h.shares > 0);
+  if (!hs.length) {
+    return `<section class="empty-card">
+      <div class="eico">💼</div>
+      <h3>尚無投資組合</h3>
+      <p>建立投資組合，開始追蹤你的投資績效。</p>
+      <button type="button" class="goldbtn" data-act="goto" data-href="#/portfolio">建立投資組合</button>
+    </section>`;
+  }
+  return `<section class="xcard" data-act="goto" data-href="#/portfolio">
+    <div class="sec-h"><span class="ico">💼</span><span class="tt">我的投資組合</span><span class="sp"></span><span class="chev">›</span></div>
+    <div class="muted small">共 ${hs.length} 筆持股，點擊查看績效。</div>
+  </section>`;
+}
+
+/* ── 自選股卡 ── */
+function watchCard() {
+  const keys = S.set.watch || [];
+  if (!keys.length) {
+    return `<section class="empty-card" id="watchlist">
+      <div class="eico">🔍</div>
+      <h3>還沒有自選股</h3>
+      <p>把關注的股票加入自選，隨時掌握價格變化。</p>
+      <button type="button" class="ghostbtn" data-act="goto" data-href="#/search">＋ 新增自選股</button>
+    </section>`;
+  }
+  const all = uni();
+  const rows = keys.map((key) => ({ key, u: all.find((x) => x.key === key) })).filter((x) => x.u).map(({ key, u }) => {
+    const q = S.quotes[key];
+    return `<a class="rrow side" href="#/stock/${encodeURIComponent(key)}">
+      ${stockLogo(key, u.name, u.symbol)}
+      <div class="rmid"><div class="nm">${esc(u.name)}</div><div class="sub">${esc(u.symbol)} · ${esc(u.board || (q?.source === "binance" ? "即時" : "延遲"))}</div></div>
+      <div class="rpx"><div class="p ${q ? tone(q.change) : ""}">${q ? fmt(q.price, 2) : "—"}</div><div class="d ${q ? tone(q.change) : "muted"}">${q ? pct(q.change) : "無報價"}</div></div>
+      <div class="rside">${sparkLine(key)}</div>
+    </a>`;
+  }).join("");
+  return `<section class="xcard" id="watchlist">
+    <div class="sec-h"><span class="ico">⭐</span><span class="tt">我的自選</span><span class="sp"></span><a class="small" style="color:var(--muted);text-decoration:none" href="#/search">編輯</a></div>
+    ${rows || `<div class="muted small empty">自選清單是空的。</div>`}
+  </section>`;
+}
+
+/* ── 熱門股（一行一檔） ── */
+function hotCard() {
+  const top = HOT_STOCKS.slice(0, 3);
+  return `<section class="xcard">
+    <div class="sec-h"><span class="ico">🔥</span><span class="tt">熱門股</span><span class="sp"></span><a class="small" style="color:var(--muted);text-decoration:none" href="#/search">看更多 ›</a></div>
+    ${top.map((h) => {
       const key = keyOf("台股", h.symbol);
       const q = S.quotes[key];
-      const w = S.set.watch.includes(key);
-      return `<a class="qrow" href="#/search?s=${encodeURIComponent(key)}">
+      return `<a class="rrow side" href="#/stock/${encodeURIComponent(key)}">
         ${stockLogo(key, h.name, h.symbol)}
-        <div class="qrow-id">
-          <span class="qrow-sym">${esc(h.symbol)}${w ? `<span class="dot"></span>` : ""}</span>
-          <span class="muted small">${esc(h.name)}</span>
-        </div>
-        <div class="qrow-px">
-          <span class="num ${q ? tone(q.change) : ""}">${q ? fmt(q.price, 2) : "—"}</span>
-          <span class="small ${q ? tone(q.change) : "muted"}">${q ? pct(q.change) : "無報價"}</span>
-        </div>
-        <div class="qrow-spark">${sparkLine(key)}</div>
+        <div class="rmid"><div class="nm">${esc(h.name)}</div><div class="sub">${esc(h.symbol)} · 上市</div></div>
+        <div class="rpx"><div class="p ${q ? tone(q.change) : ""}">${q ? fmt(q.price, 2) : "—"}</div><div class="d ${q ? tone(q.change) : "muted"}">${q ? pct(q.change) : "無報價"}</div></div>
+        <div class="rside">${sparkLine(key)}</div>
       </a>`;
-    }).join("")}</div>
-    <a class="more-link" href="#/search">看更多熱門股（共 ${HOT_STOCKS.length} 檔）›</a>
+    }).join("")}
   </section>`;
 }
 
-/* ── 自選股 ── */
-function watchTab() {
-  const g = S.set.watch;
-  const all = uni();
-  const groups = ["全部", "台股", "美股", "加密貨幣", "指數"];
-  const tab = S.watchTab || "全部";
-  const list = g
-    .map((key) => ({ key, u: all.find((x) => x.key === key) }))
-    .filter((x) => x.u)
-    .filter((x) => tab === "全部" || x.u.market === tab);
-  const rows = list.length ? list.map(({ key, u }) => {
-    const q = S.quotes[key];
-    const sub = [u.board, q ? (q.source === "binance" ? "即時" : "延遲") : "無報價"].filter(Boolean).join(" · ");
-    return `<div class="wrow">
-      ${stockLogo(key, u.name, u.symbol)}
-      <a class="wrow-mid" href="#/search?s=${encodeURIComponent(key)}">
-        <div class="wrow-name"><strong>${esc(u.symbol)}</strong> <span class="muted">${esc(u.name)}</span></div>
-        <div class="wrow-sub muted">${esc(sub)}</div>
-      </a>
-      <div class="wrow-px">
-        <div class="num">${q ? fmt(q.price, 2) : "—"}</div>
-        <div class="num small ${q ? tone(q.change) : ""}">${q ? pct(q.change) : "—"}</div>
-      </div>
-      <button type="button" class="btn sm wrow-del" data-act="toggle-watch" data-key="${esc(key)}">移除</button>
-    </div>`;
-  }).join("") : `<div class="muted small empty">自選清單是空的。可在「熱門股」按 ＋ 或到搜索頁加入。</div>`;
-  return `<section class="card" id="watchlist">
-    <h2 class="h2">自選股</h2>
-    <div class="chips">${groups.map((t) => `<button type="button" class="chip ${tab === t ? "on" : ""}" data-act="watch-tab" data-tab="${esc(t)}">${t}</button>`).join("")}</div>
-    <div class="list">${rows}</div>
+/* ── 盤後法人／當沖快覽 ── */
+function afterHoursCard() {
+  const inst = institutions(), dt = daytrade();
+  if (!inst && !dt) return "";
+  const rows = [];
+  if (inst?.total?.net != null) rows.push(`<div class="row" style="padding:6px 0"><span class="small muted">三大法人合計</span><span class="num small ${tone(inst.total.net)}">${yi(inst.total.net)}</span></div>`);
+  if (inst?.foreign?.net != null) rows.push(`<div class="row" style="padding:6px 0"><span class="small muted">外資</span><span class="num small ${tone(inst.foreign.net)}">${yi(inst.foreign.net)}</span></div>`);
+  if (inst?.trust?.net != null) rows.push(`<div class="row" style="padding:6px 0"><span class="small muted">投信</span><span class="num small ${tone(inst.trust.net)}">${yi(inst.trust.net)}</span></div>`);
+  if (dt?.total != null) { const v = dt.total.shares || 0; rows.push(`<div class="row" style="padding:6px 0"><span class="small muted">當沖成交量</span><span class="num small">${v > 1e10 ? yi(v) : fmt(Math.round(v / 1000)) + "張"}</span></div>`); }
+  return `<section class="xcard">
+    <div class="sec-h"><span class="ico">🏦</span><span class="tt">盤後籌碼</span><span class="sp"></span><span class="meta">${S.market?.date ? S.market.date.slice(4, 6) + "/" + S.market.date.slice(6, 8) : ""}</span></div>
+    ${rows.join("") || `<div class="muted small">尚無資料</div>`}
+    <a class="more-link" href="#/inst">看完整法人買超排行 ›</a>
   </section>`;
 }
 
-/* ── 持股摘要 ── */
-function holdingSummary() {
-  const hs = holdings().filter((h) => h.shares > 0).sort((a, b) => {
-    const fx = fxRate();
-    return (b.shares * b.avgCost * (b.currency === "TWD" ? 1 : fx)) - (a.shares * a.avgCost * (a.currency === "TWD" ? 1 : fx));
-  }).slice(0, 3);
-  if (!hs.length) return "";
-  const fx = fxRate();
-  return `<section class="card">
-    <h2 class="h2">持股摘要 <a class="small" href="#/portfolio">全部 →</a></h2>
-    <div class="list">${hs.map((h) => {
-      const q = quoteOf(h);
-      const val = h.shares * (q ? q.price : h.avgCost) * (h.currency === "TWD" ? 1 : fx);
-      const cost = h.shares * h.avgCost * (h.currency === "TWD" ? 1 : fx);
-      const pnl = val - cost, ret = cost ? (pnl / cost) * 100 : 0;
-      return `<div class="list-item">
-        <span style="flex:1;min-width:0"><strong>${esc(h.name)}</strong> <span class="muted small">${esc(h.symbol)}</span></span>
-        <span class="num">NT$ ${fmt(val)}</span>
-        <span class="num ${tone(ret)}">${pnl >= 0 ? "+" : ""}${fmt(pnl)} (${pct(ret)})</span>
-      </div>`;
-    }).join("")}</div>
-  </section>`;
-}
-
-/* ── 警報摘要 ── */
-function alertSummary() {
-  const alerts = (S.set.alerts || []).filter((a) => a.active);
-  const unread = (S.set.notifications || []).filter((n) => !n.read).length;
-  if (!alerts.length && !unread) return "";
-  return `<section class="card">
-    <h2 class="h2">警報 ${unread ? `<span class="badge live">${unread}</span>` : ""} <a class="small" href="#/profile">管理 →</a></h2>
-    <div class="list">${alerts.slice(0, 3).map((a) => {
-      const u = uni().find((x) => x.key === a.key);
-      const kind = { "price-above": "價格高於", "price-below": "價格低於", "day-above": "漲跌高於", "day-below": "漲跌低於" }[String(a.kind).replace(/_/g, "-")] || a.kind;
-      return `<div class="list-item"><span style="flex:1">${esc(u?.name || a.key)}</span><span class="muted small">${kind} ${a.threshold}</span></div>`;
-    }).join("")}</div>
-  </section>`;
-}
-
-/* ── 主視圖 ── */
 export function viewHome() {
   return `${statusBanner()}
-    ${heroCards()}
-    ${entryGrid()}
-    ${instTop() ? `<section class="card"><h2 class="h2">盤後法人動向</h2>${instTop()}</section>` : ""}
-    ${hotStocks()}
-    ${watchTab()}
-    ${holdingSummary()}
-    ${alertSummary()}
-    <p class="muted small" style="text-align:center;margin-top:16px">報價與市場資料來自公開來源（幣安即時／TWSE 盤後），可能有延遲或誤差，僅供參考，不構成投資建議。</p>`;
+    ${aiCard()}
+    ${fnRow()}
+    ${portfolioCard()}
+    ${watchCard()}
+    ${afterHoursCard()}
+    ${hotCard()}
+    <p class="muted small" style="text-align:center;margin-top:14px;font-size:11px">報價與市場資料來自公開來源（幣安即時／TWSE 盤後），可能有延遲或誤差，僅供參考，不構成投資建議。</p>`;
 }
 
-export function afterHome() {
-  const c = $("#home-donut"); if (c) { /* 保留擴充點 */ }
-}
+export function afterHome() { /* 預留 */ }
 
 /* ── actions ── */
 registerAction("toggle-watch", (el) => {
@@ -272,3 +204,4 @@ registerAction("scroll-to", (el) => {
   const t = document.getElementById(el.dataset.target);
   if (t) t.scrollIntoView({ behavior: "smooth", block: "start" });
 });
+registerAction("goto", (el) => { location.hash = el.dataset.href || "#/home"; });
