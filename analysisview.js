@@ -568,8 +568,12 @@ export function afterAnalysis() {
 /* ---------- 買超排行 Sheet ---------- */
 function instRanksHtml() {
   const r = instRank() || {};
+  const okCode = (code) => {
+    const k = keyOf("台股", String(code || "").trim());
+    return !!(S.quotes?.[k] && typeof S.quotes[k].price === "number") && (S.file?.candles?.[k]?.length || 0) >= 60;
+  };
   const sec = (title, arr) => {
-    const a = arr || [];
+    const a = (arr || []).filter((x) => okCode(x.code));
     const body = a.length
       ? a.slice(0, 10).map(x => `
           <div class="list-item">
