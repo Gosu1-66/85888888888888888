@@ -369,7 +369,12 @@ nav.bottom-nav { grid-template-columns: repeat(4, 1fr); background: rgba(12,13,1
 .rk.gx { background: rgba(255,255,255,.06); color: #8b939e; }
 .chip2.on { background: rgba(217,177,106,.18); border-color: rgba(217,177,106,.45); color: #f0cf8e; font-weight: 700; }
 .legend { display: flex; gap: 12px; flex-wrap: wrap; font-size: 11px; color: #8b939e; margin-top: 6px; }
-.legend i { display: inline-block; width: 10px; height: 2px; margin-right: 4px; vertical-align: middle; border-radius: 2px; }/* 列表行圓角 Logo（全站統一） */
+.legend i { display: inline-block; width: 10px; height: 2px; margin-right: 4px; vertical-align: middle; border-radius: 2px; }
+/* 圓角 Logo 基底（任何容器都要有尺寸） */
+.logo { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 50%; background: #fff; overflow: hidden; flex: none; font-size: 13px; font-weight: 800; color: #14181c; }
+.logo img { width: 100%; height: 100%; object-fit: contain; display: block; padding: 3px; }
+.logo > span { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; }
+/* 列表行圓角 Logo（全站統一） */
 .rrow .logo, .fncard .logo, .logo.md { width: 34px; height: 34px; border-radius: 50%; background: #fff; overflow: hidden; flex: none; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 800; color: #14181c; }
 .rrow .logo img, .logo.md img { width: 100%; height: 100%; object-fit: contain; display: block; padding: 3px; }
 .rrow .logo span, .logo.md span { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; }
