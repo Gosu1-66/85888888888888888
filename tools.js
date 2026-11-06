@@ -5,6 +5,7 @@ import { S, save, uni, quoteOf, fxRate } from "./state.js";
 import { keyOf } from "./portfolio.js";
 import { breadth, institutions, instRank, industryFlow, daytrade, greedIndex, indices } from "./marketdata.js";
 import { HOT_STOCKS, CATALOG } from "./catalog.js";
+import { stockLogo, sparkLine } from "./home.js";
 
 const yi = (n) => (n == null || isNaN(n)) ? "—" : fmt(Math.round(n / 1e8), 0) + "億";
 const zhang = (n) => (n == null || isNaN(n)) ? "—" : fmt(Math.round(n / 1000), 0) + "張";
@@ -14,11 +15,8 @@ const nameOf = (code, raw) => {
   return uni().find((x) => x.key === k)?.name || clean(raw) || code;
 };
 
-function head(title) {
-  return `<div class="row" style="align-items:center;gap:10px;margin-bottom:10px">
-    <a href="#/home" class="btn sm">‹ 首頁</a>
-    <h2 class="h2" style="margin:0">${esc(title)}</h2>
-  </div>`;
+function head() {
+  return "";   // 頂部列已提供返回鍵，子頁不再重複
 }
 
 function emptyCard(title, msg) {
@@ -31,58 +29,79 @@ export function viewRadar() {
   const b = breadth();
   const ind = industryFlow();
   const inst = institutions();
+  const rank = instRank() || {};
   const idx = indices()[0];
+  const dateTxt = S.market?.date ? S.market.date.slice(4, 6) + "/" + S.market.date.slice(6, 8) : "";
 
-  const gauge = g ? `<section class="card">
-    <h2 class="h2">市場情緒</h2>
-    <div class="row" style="gap:16px;align-items:center">
-      <div style="font-size:44px;font-weight:800" class="${g.score >= 50 ? "up" : "down"}">${g.score}</div>
-      <div><div style="font-weight:700">${esc(g.label)}</div>
-      <div class="muted small">0 = 極度恐慌，100 = 極度貪婪</div></div>
-    </div>
-    <div style="margin-top:10px">${g.parts.map((p) => `<div class="row" style="justify-content:space-between;border-bottom:1px solid var(--border);padding:6px 0">
-      <span class="small muted">${esc(p.label)}</span><span class="small">${esc(p.text)}</span></div>`).join("")}</div>
-  </section>` : emptyCard("市場情緒", "市場資料尚未更新");
+  const stockCount = new Set([...(rank.foreign || []), ...(rank.trust || []), ...(rank.dealer || [])].map((x) => String(x.code).trim())).size;
+  const indSorted = ind.slice().sort((a, c) => (c.totalNet || 0) - (a.totalNet || 0));
+  const maxInd = Math.max(...ind.map((x) => Math.abs(x.totalNet || 0)), 1);
+  const score = (v) => Math.round(50 + Math.max(-1, Math.min(1, v / maxInd)) * 45);
 
-  const breadthCard = b ? `<section class="card">
-    <h2 class="h2">漲跌家數（${esc(b.date || "")}）</h2>
-    <div class="row" style="gap:8px;margin-bottom:8px">
-      <span class="badge up">上漲 ${b.rise}</span>
-      <span class="badge down">下跌 ${b.fall}</span>
-      <span class="badge none">平盤 ${b.flat}</span>
-    </div>
-    <div style="height:10px;border-radius:6px;overflow:hidden;display:flex">
-      <div style="flex:${b.rise};background:var(--up)"></div>
-      <div style="flex:${b.flat};background:var(--muted,#666)"></div>
-      <div style="flex:${b.fall};background:var(--down)"></div>
-    </div>
-    <div class="small muted" style="margin-top:8px">成交金額 ${yi(b.amount)}｜全市場（含上櫃）上漲 ${b.riseAll}、下跌 ${b.fallAll}</div>
-  </section>` : emptyCard("漲跌家數", "市場資料尚未更新");
+  const indTop = indSorted.slice(0, 6).map((x, i) => {
+    const s = score(x.totalNet || 0);
+    return `<div class="rrow rank" style="grid-template-columns:26px minmax(0,1fr) auto">
+      <span class="rk ${i === 0 ? "g1" : i === 1 ? "g2" : i === 2 ? "g3" : "gx"}">${i + 1}</span>
+      <div class="rmid"><div class="nm">${esc(x.name)}</div>
+        <div class="barline" style="margin-top:6px"><i style="width:${Math.min(100, s)}%;background:linear-gradient(90deg,#c9a259,#f0cf8e)"></i></div>
+        <div class="sub" style="margin-top:5px">${(x.totalNet || 0) >= 0 ? "+" : ""}${zhang(x.totalNet)}</div>
+      </div>
+      <div class="rpx"><div class="p" style="font-size:16px;color:var(--gold2)">${s}</div></div>
+    </div>`;
+  }).join("");
 
-  const indRows = ind.slice().sort((a, c) => (c.totalNet || 0) - (a.totalNet || 0));
-  const indCard = indRows.length ? `<section class="card">
-    <h2 class="h2">產業法人買賣超</h2>
-    ${indRows.map((x) => `<div class="list-item">
-      <span style="flex:1">${esc(x.name)}</span>
-      <span class="num ${tone(x.totalNet)}">${zhang(x.totalNet)}</span>
-    </div>`).join("")}
-  </section>` : emptyCard("產業法人買賣超", "市場資料尚未更新");
+  const foreign = (rank.foreign || []).slice().sort((a, c) => c.net - a.net);
+  const maxF = Math.max(...foreign.map((x) => x.net), 1);
+  const stkTop = foreign.slice(0, 6).map((x, i) => {
+    const k = keyOf("台股", String(x.code).trim());
+    const nm = uni().find((u) => u.key === k)?.name || String(x.name).trim();
+    const s = Math.round(50 + (x.net / maxF) * 45);
+    const q = S.quotes[k];
+    return `<a class="rrow" style="grid-template-columns:22px 34px minmax(0,1fr) auto" href="#/stock/${encodeURIComponent(k)}">
+      <span class="rk ${i === 0 ? "g1" : i === 1 ? "g2" : i === 2 ? "g3" : "gx"}">${i + 1}</span>
+      <span class="logo">${stockLogo(k, nm, String(x.code).trim(), "logo")}</span>
+      <span class="rmid"><div class="nm">${esc(nm)}</div><div class="sub">${esc(String(x.code).trim())} · 共振 ${s}</div></span>
+      <span class="rpx"><div class="p ${q ? tone(q.change) : ""}">${q ? fmt(q.price, 2) : "—"}</div><div class="d ${q ? tone(q.change) : "muted"}">${q ? pct(q.change) : "—"}</div></span>
+    </a>`;
+  }).join("");
 
-  const instCard = inst ? `<section class="card">
-    <h2 class="h2">三大法人合計（${esc(inst.date || "")}）</h2>
-    <div class="list-item"><span style="flex:1">合計</span><span class="num ${tone(inst.total?.net)}">${yi(inst.total?.net)}</span></div>
-    <div class="list-item"><span style="flex:1">外資</span><span class="num ${tone(inst.foreign?.net)}">${yi(inst.foreign?.net)}</span></div>
-    <div class="list-item"><span style="flex:1">投信</span><span class="num ${tone(inst.trust?.net)}">${yi(inst.trust?.net)}</span></div>
-    <div class="list-item"><span style="flex:1">自營商</span><span class="num ${tone(inst.dealer?.net)}">${yi(inst.dealer?.net)}</span></div>
-  </section>` : "";
+  const eventStk = foreign.slice(0, 3).map((x) => {
+    const k = keyOf("台股", String(x.code).trim());
+    const nm = uni().find((u) => u.key === k)?.name || String(x.name).trim();
+    const q = S.quotes[k];
+    return `<a class="rrow" href="#/stock/${encodeURIComponent(k)}">
+      <span class="logo">${stockLogo(k, nm, String(x.code).trim(), "logo")}</span>
+      <span class="rmid"><div class="nm">${esc(nm)} <span class="mini-chip red">強勢共振</span></div>
+        <div class="sub">外資買超 ${zhang(x.net)}${q ? " · 現價 " + fmt(q.price, 2) : ""}</div></span>
+      <span class="rpx"><div class="p ${q ? tone(q.change) : ""}" style="font-size:14px">${q ? pct(q.change) : ""}</div></span>
+    </a>`;
+  }).join("");
 
-  return `${head("市場雷達")}
-    ${idx ? `<section class="card"><div class="row" style="justify-content:space-between;align-items:center">
-      <div><div class="small muted">${esc(idx.name)}</div><div class="num" style="font-size:26px;font-weight:800">${fmt(idx.price, 2)}</div></div>
-      <div class="num ${tone(idx.changePct)}">${idx.change != null ? (idx.change > 0 ? "+" : "") + fmt(idx.change, 2) : "—"}<br>${idx.changePct != null ? pct(idx.changePct) : ""}</div>
-    </div></section>` : ""}
-    ${gauge}${breadthCard}${instCard}${indCard}
-    <p class="muted small" style="text-align:center">資料為最近交易日盤後統計，僅供參考。</p>`;
+  return `<section class="xcard">
+      <div class="sec-h"><span class="ico">📡</span><span class="tt">市場情報總覽</span><span class="sp"></span><span class="meta">${esc(dateTxt)}</span></div>
+      <div class="stat4" style="border-top:0;padding-top:0">
+        <div><div class="k">覆蓋個股</div><div class="v" style="font-size:17px">${stockCount}</div></div>
+        <div><div class="k">追蹤產業</div><div class="v" style="font-size:17px">${ind.length}</div></div>
+        <div><div class="k">偵測事件</div><div class="v" style="font-size:17px">${(b ? b.rise + b.fall : 0)}</div></div>
+        <div><div class="k">市場情緒</div><div class="v" style="font-size:17px">${g ? g.score : "—"}</div></div>
+      </div>
+    </section>
+
+    <section class="xcard">
+      <div class="sec-h"><span class="ico">🏭</span><span class="tt">產業共振榜</span><span class="sp"></span><span class="meta">依法人淨額</span></div>
+      ${indTop || `<p class="small muted">尚無資料</p>`}
+    </section>
+
+    <section class="xcard">
+      <div class="sec-h"><span class="ico">🎯</span><span class="tt">個股多因子共振</span><span class="sp"></span><span class="meta">外資視角</span></div>
+      ${stkTop || `<p class="small muted">尚無資料</p>`}
+    </section>
+
+    <section class="xcard">
+      <div class="sec-h"><span class="ico">⚡</span><span class="tt">異常事件研究線索</span><span class="sp"></span><span class="meta">規則式</span></div>
+      ${eventStk || `<p class="small muted">尚無資料</p>`}
+      <p class="small muted" style="margin-top:10px">分數與共振為法人淨額與量價的規則式推估，非預測。</p>
+    </section>`;
 }
 
 /* ── 法人排行 ── */
@@ -98,21 +117,27 @@ export function viewInst() {
   const row = (x, i) => {
     const k = keyOf("台股", clean(x.code));
     const w = S.set.watch.includes(k);
-    return `<a class="list-item" href="#/search?s=${encodeURIComponent(k)}">
-      <span class="muted small" style="width:26px">${i + 1}</span>
-      <span style="flex:1;min-width:0"><strong>${esc(clean(x.code))}</strong> <span class="muted small">${esc(nameOf(x.code, x.name))}</span>
-        ${w ? `<span class="dot"></span>` : ""}</span>
-      <span class="num ${tone(x.net)}">${zhang(x.net)}</span>
+    const nm = nameOf(x.code, x.name);
+    return `<a class="rrow" style="grid-template-columns:22px 34px minmax(0,1fr) auto 64px" href="#/stock/${encodeURIComponent(k)}">
+      <span class="rk ${i === 0 ? "g1" : i === 1 ? "g2" : i === 2 ? "g3" : "gx"}" style="width:20px;height:20px;font-size:11px">${i + 1}</span>
+      <span class="logo">${stockLogo(k, nm, clean(x.code), "logo")}</span>
+      <span class="rmid"><div class="nm">${esc(nm)}${w ? '<span class="mini-chip gold">自選</span>' : ""}</div><div class="sub">${esc(clean(x.code))} · ${esc(keyOfType)}</div></span>
+      <span class="rpx"><div class="p ${tone(x.net)}">${zhang(x.net)}</div></span>
+      <span class="rside">${sparkLine(k, 64, 22)}</span>
     </a>`;
   };
-  return `${head("法人買賣超排行")}
-    <div class="row" style="gap:8px;margin-bottom:10px">
-      ${tabs.map(([k, label]) => `<button type="button" class="btn sm ${tab === k ? "primary" : ""}" data-act="inst-tab" data-tab="${k}">${esc(label)}</button>`).join("")}
+  return `${head()}
+    <div class="chiprow" style="margin:0 0 10px">
+      ${tabs.map(([k, label]) => `<button type="button" class="chip2 ${tab === k ? "on" : ""}" data-act="inst-tab" data-tab="${k}">${esc(label)}</button>`).join("")}
     </div>
-    <div class="small muted" style="margin:-2px 0 10px">${esc(keyOfType)}買超前 25 名（單位：張）</div>
-    <section class="card">${top.map(row).join("")}</section>
-    <div class="small muted" style="margin:14px 0 10px">${esc(keyOfType)}賣超前 15 名</div>
-    <section class="card">${bot.map((x, i) => row(x, i)).join("")}</section>
+    <section class="xcard">
+      <div class="sec-h"><span class="tt">${esc(keyOfType)}買超前 25 名</span><span class="sp"></span><span class="meta">單位：張</span></div>
+      ${top.map(row).join("")}
+    </section>
+    <section class="xcard">
+      <div class="sec-h"><span class="tt">${esc(keyOfType)}賣超前 15 名</span></div>
+      ${bot.map((x, i) => row(x, i)).join("")}
+    </section>
     <p class="muted small" style="text-align:center">盤後統計，資料由 TWSE 公開資訊排程抓取。</p>`;
 }
 
@@ -123,19 +148,23 @@ export function viewDaytrade() {
   const total = d.total?.shares;
   const totalText = total == null ? "—" : (total > 1e10 ? yi(total) : zhang(total));
   const rows = d.list.slice().sort((a, b) => (b.shares || 0) - (a.shares || 0));
-  return `${head("當沖排行")}
-    <section class="card">
-      <div class="row" style="justify-content:space-between"><span class="muted small">${esc(d.date || "")} 全市場當沖成交量</span>
-      <span class="num">${totalText}</span></div>
+  return `${head()}
+    <section class="xcard">
+      <div class="sec-h"><span class="tt">全市場當沖成交量</span><span class="sp"></span><span class="meta">${esc(d.date || "")}</span></div>
+      <div class="num" style="font-size:22px;font-weight:800;color:var(--gold2)">${totalText}</div>
+      <div class="small muted" style="margin-top:4px">當日現股沖銷合計，盤後統計。</div>
     </section>
-    <section class="card">
-      <h2 class="h2">當沖熱門（前 ${rows.length} 檔）</h2>
+    <section class="xcard">
+      <div class="sec-h"><span class="tt">當沖熱門（前 ${rows.length} 檔）</span><span class="sp"></span><span class="meta">量＝張</span></div>
       ${rows.map((x, i) => {
         const k = keyOf("台股", clean(x.code));
-        return `<a class="list-item" href="#/search?s=${encodeURIComponent(k)}">
-          <span class="muted small" style="width:26px">${i + 1}</span>
-          <span style="flex:1;min-width:0"><strong>${esc(clean(x.code))}</strong> <span class="muted small">${esc(clean(x.name))}</span></span>
-          <span class="num">${zhang(x.shares)}</span>
+        const nm = nameOf(x.code, x.name);
+        return `<a class="rrow" style="grid-template-columns:22px 34px minmax(0,1fr) auto 64px" href="#/stock/${encodeURIComponent(k)}">
+          <span class="rk ${i === 0 ? "g1" : i === 1 ? "g2" : i === 2 ? "g3" : "gx"}" style="width:20px;height:20px;font-size:11px">${i + 1}</span>
+          <span class="logo">${stockLogo(k, nm, clean(x.code), "logo")}</span>
+          <span class="rmid"><div class="nm">${esc(nm)}</div><div class="sub">${esc(clean(x.code))}</div></span>
+          <span class="rpx"><div class="p">${zhang(x.shares)}</div></div>
+          <span class="rside">${sparkLine(k, 64, 22)}</span>
         </a>`;
       }).join("")}
     </section>
@@ -152,17 +181,21 @@ export function viewScan() {
     if (sort === "drop") return (a.q.change || 0) - (b.q.change || 0);
     return (b.q.change || 0) - (a.q.change || 0);
   }).slice(0, 30);
-  return `${head("選股")}
-    <div class="row" style="gap:8px;margin-bottom:10px">
-      ${tabs.map(([k, label]) => `<button type="button" class="btn sm ${sort === k ? "primary" : ""}" data-act="scan-sort" data-sort="${k}">${esc(label)}排序</button>`).join("")}
+  return `${head()}
+    <div class="chiprow" style="margin:0 0 10px">
+      ${tabs.map(([k, label]) => `<button type="button" class="chip2 ${sort === k ? "on" : ""}" data-act="scan-sort" data-sort="${k}">${esc(label)}</button>`).join("")}
     </div>
-    <section class="card">
-      ${sorted.map(({ x, q }, i) => `<a class="list-item" href="#/search?s=${encodeURIComponent(x.key)}">
-        <span class="muted small" style="width:26px">${i + 1}</span>
-        <span style="flex:1;min-width:0"><strong>${esc(x.symbol)}</strong> <span class="muted small">${esc(x.name)}</span>
-          ${x.market !== "台股" ? `<span class="tag mid">${esc(x.market)}</span>` : ""}</span>
-        <span class="num ${tone(q.change)}">${fmt(q.price, 2)}<br><span class="small">${q.change != null ? pct(q.change) : "—"}</span></span>
-      </a>`).join("") || `<p class="muted small">目前無報價資料。</p>`}
+    <section class="xcard">
+      ${sorted.map(({ x, q }, i) => {
+        const k = x.key, nm = x.name;
+        return `<a class="rrow" style="grid-template-columns:22px 34px minmax(0,1fr) auto 64px" href="#/stock/${encodeURIComponent(k)}">
+          <span class="rk ${i === 0 ? "g1" : i === 1 ? "g2" : i === 2 ? "g3" : "gx"}" style="width:20px;height:20px;font-size:11px">${i + 1}</span>
+          <span class="logo">${stockLogo(k, nm, x.symbol, "logo")}</span>
+          <span class="rmid"><div class="nm">${esc(nm)}</div><div class="sub">${esc(x.symbol)}${x.industry ? `<span class="mini-chip">${esc(x.industry)}</span>` : ""}</div></span>
+          <span class="rpx"><div class="p">${fmt(q.price, 2)}</div><div class="d ${tone(q.change)}">${q.change != null ? pct(q.change) : "—"}</div></span>
+          <span class="rside">${sparkLine(k, 64, 22)}</span>
+        </a>`;
+      }).join("") || `<p class="small muted">目前無報價資料。</p>`}
     </section>
     <p class="muted small" style="text-align:center">依即時報價排序，清單為內建與自選標的。</p>`;
 }
