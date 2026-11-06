@@ -69,7 +69,7 @@ export function viewStock() {
   const amt = vol && q ? vol * q.price : null;
   const tab = S.stockTab || "概覽";
 
-  const stkLogo = stockLogo(key, u.name, u.symbol, "logo");
+  const stkLogo = stockLogo(key, u.name, u.symbol, "logo-in");
   const head = `<section class="xcard" style="padding:14px 16px">
     <div class="stk-head">
       <span class="logo">${stkLogo}</span>
