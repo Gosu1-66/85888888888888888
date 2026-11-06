@@ -252,7 +252,7 @@ export function afterStock() {
   if (box) box.innerHTML = ohlcText(cs[cs.length - 1], cs[cs.length - 2]);
 
   const range = Number(S.stkRange) || 126;
-  if (klineState && klineState.key === key) {
+  if (klineState && klineState.key === key && klineState.el === mainEl && mainEl.isConnected) {
     klineState.range = range;
     if (klineState.chart) klineState.chart.setBars(range);
     return;
@@ -274,7 +274,7 @@ export function afterStock() {
       box.innerHTML = ohlcText(raw || { t: time, o: d.open, h: d.high, l: d.low, c: d.close, v: 0 }, cs[cs.length - 2]);
     },
   });
-  klineState = { key, range, chart };
+  klineState = { key, range, chart, el: mainEl };
 }
 /* ── actions ── */
 registerAction("stk-range", (el) => {
