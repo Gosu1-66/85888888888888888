@@ -582,3 +582,11 @@ body[data-route="search"] .ticker { display: none; }
 .hpx span { font-size: 12.5px; }
 .hmore { width: 100%; margin: 12px 0 4px; height: 42px; border-radius: 12px; background: #15181d; border: 1px solid rgba(255,255,255,.08); color: #cfd5dd; font-size: 14px; cursor: pointer; }
 .co-desc { font-size: 12px; color: #8b939e; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* 日線「顯示範圍」分段切換（和週期按鈕區隔，避免看起來像兩個週期同時選取） */
+#stk-range-row { align-items: center; gap: 8px; }
+.rng-lbl { font-size: 12px; color: #7c838c; flex: 0 0 auto; }
+.rng-seg { display: inline-flex; background: #12161b; border: 1px solid rgba(255,255,255,.08); border-radius: 10px; padding: 2px; flex: 0 0 auto; }
+.rng-seg button { background: none; border: 0; color: #9aa2ad; font-size: 12.5px; padding: 5px 10px; border-radius: 8px; cursor: pointer; }
+.rng-seg button.on { background: #2a3038; color: #fff; font-weight: 700; }
+.xcard.kfs .rng-lbl { display: none; }

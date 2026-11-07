@@ -70,6 +70,7 @@ function baseOptions(width, height, opts = {}) {
     rightPriceScale: {
       borderColor: "rgba(255,255,255,.10)",
       scaleMargins: { top: 0.06, bottom: 0.06 },
+      minimumWidth: 74,   // 主圖與副圖右側刻度同寬，上下 K 棒才會對齊
     },
     timeScale: {
       borderColor: "rgba(255,255,255,.10)",
@@ -126,7 +127,7 @@ export function mountCandle(mainEl, subEl, candles, opts = {}) {
   const subOpts = baseOptions(subEl.clientWidth || 320, hSub, opts);
   subOpts.timeScale.barSpacing = barsSpacing;
   subOpts.timeScale.visible = false;   // 時間軸只保留在主圖，避免兩條重複
-  subOpts.rightPriceScale = { borderColor: "rgba(255,255,255,.10)", scaleMargins: { top: 0.04, bottom: 0.04 } };
+  subOpts.rightPriceScale = { visible: true, minimumWidth: 74, borderColor: "rgba(255,255,255,.10)", scaleMargins: { top: 0.04, bottom: 0.04 } };
   const sub = lib.createChart(subEl, subOpts);
 
   const candle = main.addCandlestickSeries({

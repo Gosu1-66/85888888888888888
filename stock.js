@@ -125,9 +125,10 @@ export function viewStock() {
     </div>
   </section>`;
 
-  const RANGES = [[21, "1月"], [63, "3月"], [126, "6月"], [243, "1年"]];
+  const RANGES = [[21, "近1月"], [63, "近3月"], [126, "近半年"], [243, "近1年"]];
   const rng = Number(S.stkRange) || 126;
-  const rangeChips = RANGES.map(([r, l]) => `<button class="chip2${r === rng ? " on" : ""}" data-act="stk-range" data-range="${r}">${l}</button>`).join("");
+  // 「顯示範圍」是日線底下的子選項（只改畫面上看幾根），樣式做成分段切換，和上面的週期按鈕區隔
+  const rangeChips = `<span class="rng-lbl">顯示範圍</span><span class="rng-seg">${RANGES.map(([r, l]) => `<button class="${r === rng ? "on" : ""}" data-act="stk-range" data-range="${r}">${l}</button>`).join("")}</span>`;
 
   const canIntraday = u.market === "加密貨幣" ? true : u.market === "美股" ? cs.length >= 60 : false;
   const period = canIntraday ? stkPeriod() : "1d";
@@ -148,7 +149,7 @@ export function viewStock() {
       <span style="flex:1"></span>
       ${fs ? `<button class="chip2 kfs-exit" data-act="stk-fs-exit">✕ 退出全螢幕</button>` : `<button class="chip2" data-act="stk-fs" title="全螢幕（自動橫向）">⤢ 全螢幕</button>`}
       ${canTv ? `<button class="chip2 gold" data-act="stk-full" data-key="${esc(key)}" title="用 TradingView 完整圖表查看">完整圖表 ›</button>` : ""}
-      <span class="chip2" style="pointer-events:none" id="stk-bars">${isDaily ? `${cs.length} 根` : ""}</span>
+      <span class="chip2" style="pointer-events:none" id="stk-bars">${isDaily ? `${Math.min(cs.length, rng)} / ${cs.length} 根` : ""}</span>
     </div>
     <div class="chiprow" id="stk-range-row" style="margin:0 0 6px${isDaily && !useTv && !fs ? "" : ";display:none"}">${rangeChips}</div>
     <div class="chiprow" id="stk-ind-row" style="margin:0 0 8px${useTv || fs ? ";display:none" : ""}">${indChips}</div>
@@ -399,7 +400,7 @@ export function afterStock() {
   subEl.style.display = "";
   if (legend) legend.style.display = "";
   const barsEl = $("#stk-bars");
-  if (barsEl) barsEl.textContent = isDaily ? `${cs.length} 根` : "";
+  if (barsEl) barsEl.textContent = isDaily ? `${Math.min(cs.length, range)} / ${cs.length} 根` : "";
 
   // 加密貨幣分時：Binance klines 前端直取，一樣畫在自己的 Lightweight Charts
   // 日線本機資料不足（例如手機拿到舊快取的 prices.json）時，加密貨幣也改抓 Binance 日 K，避免「0 根」空圖
