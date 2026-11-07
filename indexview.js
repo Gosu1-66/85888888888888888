@@ -5,7 +5,7 @@ import { keyOf } from "./portfolio.js";
 import { indices } from "./marketdata.js";
 import { mountCandle, mountLine } from "./kline.js";
 
-const RANGES = [[21, "1月"], [63, "3月"], [126, "6月"], [243, "1年"]];
+const RANGES = [[21, "近1月"], [63, "近3月"], [126, "近半年"], [243, "近1年"]];
 const FUT_IDS = { "fut-ah": "afterHours", "fut-reg": "regular" };
 
 function candlesOf(key) {
@@ -49,7 +49,7 @@ export function viewIndexDetail() {
   if (!t) return `<section class="xcard"><p class="small muted">找不到這個指數的資料。</p><a class="more-link" href="#/indexb">回指數總覽 ›</a></section>`;
   const px = (v) => (v == null ? "—" : fmt(v, v >= 1000 ? 0 : 2));
   const range = Number(S.idxRange) || 126;
-  const chips = RANGES.map(([r, l]) => `<button class="chip2${r === range ? " on" : ""}" data-act="idx-range" data-range="${r}">${l}</button>`).join("");
+  const chips = `<span class="rng-lbl">顯示範圍</span><span class="rng-seg">${RANGES.map(([r, l]) => `<button class="${r === range ? "on" : ""}" data-act="idx-range" data-range="${r}">${l}</button>`).join("")}</span>`;
 
   const isCandle = t.kind === "idx" && t.code === "t00" && t.candles.length > 5;
   const hasChart = t.kind === "fut" ? (t.points || []).length > 1 : isCandle || (t.hist && t.hist.length > 5);
@@ -64,7 +64,7 @@ export function viewIndexDetail() {
       </div>
       <div class="idxv-sub"><div class="sub">${esc(t.sub)}</div><div class="small muted">前收 ${t.prev != null ? fmt(t.prev, 2) : "—"}${t.vol ? "｜成交 " + fmt(t.vol, 0) + " " + t.unit : ""}</div></div>
     </div>
-    <div class="chiprow" style="margin:10px 0 6px">${chips}<span style="flex:1"></span><span class="chip2" style="pointer-events:none">${t.kind === "fut" ? "1 分鐘" : (isCandle ? "日 K" : "日線")}</span></div>
+    <div class="chiprow" style="margin:10px 0 6px">${chips}</div>
     ${t.kind === "idx" && isCandle ? `<div class="lwc-ohlc" id="idxv-ohlc"></div>` : ""}
     <div id="idxv-main" class="lwc-main"></div>
     <div id="idxv-sub" class="lwc-sub"${isCandle ? "" : ' style="display:none"'}></div>

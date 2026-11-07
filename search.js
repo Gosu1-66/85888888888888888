@@ -4,7 +4,7 @@ import { S, save, fxRate, uni } from "./state.js";
 import { keyOf } from "./portfolio.js";
 import { CATALOG, HOT_STOCKS, ETF_LIST } from "./catalog.js";
 import { loadCandles } from "./quotes.js";
-import { instRank, daytrade } from "./marketdata.js";
+import { instRank, daytrade, indices } from "./marketdata.js";
 import { buildSeries } from "./indicators.js";
 import { drawTechnical } from "./charts.js";
 import { stockLogo, sparkLine } from "./home.js";
@@ -35,7 +35,29 @@ function tabList(tab) {
   if (tab === "tw") return u.filter((x) => x.market === "台股").slice().sort((a, b) => amtOfKey(b.key) - amtOfKey(a.key));
   if (tab === "us") return u.filter((x) => x.market === "美股" && hasQuote(x) && hasBars(x)).slice().sort((a, b) => amtOfKey(b.key) - amtOfKey(a.key));
   if (tab === "crypto") return u.filter((x) => x.market === "加密貨幣" && hasQuote(x));
-  return u.filter((x) => x.market === "指數");
+  return idxList();
+}
+
+/** 指數：只列「有報價且有走勢歷史」的（點進去一定有圖），沒資料的不顯示 */
+function idxList() {
+  return indices().filter((i) => typeof i.price === "number" && (S.idxHist?.[String(i.code || "").slice(0, 3)] || []).length >= 5)
+    .map((i) => {
+      const code = String(i.code).slice(0, 3);
+      return { market: "指數", key: `指數:${code}`, symbol: code, idx: i, name: String(i.name || "").replace("發行量加權股價指數", "加權指數") };
+    });
+}
+function idxRow(x) {
+  const i = x.idx;
+  if (!i) return "";
+  const big = /加權|櫃買/.test(x.name);
+  const up = i.change >= 0, t = up ? "up" : "down";
+  return `<a class="hrow" href="#/indexv/${encodeURIComponent(x.symbol)}">
+    <span class="hlogo"><span class="lg-char" style="background:#1b2330;color:#f0cf8e;font-weight:800;font-size:17px">${esc(String(x.name).slice(0, 1))}</span></span>
+    <span class="hmid"><span class="hnm"><b>${esc(x.name)}</b></span>
+      <span class="hsub"><span class="hchip board">${big ? "大盤" : "類股指數"}</span></span></span>
+    <span class="hpx ${t}"><b>${Number(i.price).toLocaleString("zh-TW", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</b>
+      <span>${up ? "+" : ""}${Number(i.change).toFixed(2)} | ${up ? "+" : ""}${Number(i.changePct).toFixed(2)}%</span></span>
+  </a>`;
 }
 
 /* ── 熱門股票：台股依今日成交值排名，和前一交易日的成交值排名比較（^ 上升／v 下降／NEW 新進榜） ── */
@@ -68,7 +90,7 @@ function indChip(ind) {
 
 /** 參考 App 風格的一列：logo｜名稱＋排名變化／代號＋上市櫃＋產業／一句話簡介｜價格＋漲跌 */
 function hotRow(x, meta = {}) {
-  if (x.market === "指數") return searchRow(x);
+  if (x.market === "指數") return idxRow(x);
   const k = x.key, qq = S.quotes[k];
   const isCrypto = String(k).startsWith("加密貨幣:");
   const bars = (S.file?.candles?.[k] || []).length;
