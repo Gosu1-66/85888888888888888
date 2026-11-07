@@ -443,32 +443,6 @@ export function viewProfile() {
   return `
   <h1>個人中心</h1>
 
-  <div class="card pwa-card">
-    <div class="h2">安裝到手機主畫面</div>
-    <p class="muted small">像 App 一樣全螢幕開啟、免 App Store；iPhone 用 Safari「分享 → 加入主畫面」。</p>
-    <button class="btn" data-act="pwa-help">查看加入主畫面步驟</button>
-  </div>
-
-  <div class="card">
-    <div class="h2">資產摘要</div>
-    <div class="grid g3">
-      <div class="stat">
-        <div class="muted small">庫存市值</div>
-        <div class="num h2">${money("TWD", st.mv, 0)}</div>
-      </div>
-      <div class="stat">
-        <div class="muted small">資產總額（市值＋已實現）</div>
-        <div class="num h2">${money("TWD", st.total, 0)}</div>
-        <div class="muted small">已實現 ${money("TWD", st.realized, 0)}</div>
-      </div>
-      <div class="stat">
-        <div class="muted small">報酬率</div>
-        <div class="num h2 ${tone(st.ret)}">${pct(st.ret)}</div>
-      </div>
-    </div>
-    <div class="muted small">計算方式：庫存市值＝所有持股現值換算新台幣加總；資產總額＝庫存市值＋已實現損益；報酬率＝（未實現＋已實現）／成本。</div>
-  </div>
-
   <div class="grid g2">
     <div class="card" data-act="ai-open" style="cursor:pointer"><div class="h2">AI 對話</div><div class="muted small">分析個股、查報價、看資產</div></div>
     <div class="card" data-act="open-notices" style="cursor:pointer"><div class="h2">通知中心 ${unread ? `<span class="badge live">${unread}</span>` : ""}</div><div class="muted small">警報觸發紀錄</div></div>
