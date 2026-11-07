@@ -13,13 +13,28 @@ import { companyDesc } from "./companies.js";
 /* ── 搜尋頁：分類分頁 + 分批載入 ── */
 const TAB_KEY = "gu1.searchTab";
 const STEP = 30;
-const TABS = [["hot", "熱門"], ["watch", "自選"], ["tw", "台股"], ["us", "美股"], ["crypto", "加密"], ["idx", "指數"]];
+const TABS = [["hot", "熱門"], ["watch", "自選"], ["tw", "台股"], ["etf", "ETF"], ["us", "美股"], ["crypto", "加密"], ["idx", "指數"]];
 let limit = STEP;
 
 const hasQuote = (x) => { const q = S.quotes[x.key]; return !!(q && typeof q.price === "number"); };
 const hasBars = (x) => (S.file?.candles?.[x.key] || []).length >= 60;
 const amtOfKey = (k) => { const q = S.quotes[k]; return q ? (q.vol || 0) * (q.price || 0) : 0; };
 
+const isEtf = (x) => x.market === "台股" && (x.industry === "ETF" || /^00\d{2,4}[A-Z]?$/.test(String(x.symbol || "")));
+const chgOf = (k) => { const q = S.quotes[k]; return q && typeof q.change === "number" ? q.change : (q && q.prev ? ((q.price - q.prev) / q.prev) * 100 : null); };
+const dyOf = (k) => { const f = S.file?.fundamentals?.[k.replace(/^.*:/, "")]; return f && typeof f.dy === "number" ? f.dy : null; };
+const SORTS = [["amt", "成交額"], ["vol", "成交量"], ["up", "漲幅"], ["down", "跌幅"], ["px", "股價"], ["dy", "殖利率"]];
+const sortOk = (tab) => ["tw", "etf", "us", "crypto", "watch"].includes(tab);
+function sortKey() { return SORTS.some(([k]) => k === S.searchSort) ? S.searchSort : "amt"; }
+function applySort(list) {
+  const m = sortKey(), q = (x) => S.quotes[x.key] || {};
+  const val = {
+    amt: (x) => amtOfKey(x.key), vol: (x) => q(x).vol || 0, up: (x) => chgOf(x.key),
+    down: (x) => { const c = chgOf(x.key); return c == null ? null : -c; }, px: (x) => q(x).price, dy: (x) => dyOf(x.key),
+  }[m];
+  const hasV = (x) => { const v = val(x); return v != null && !isNaN(v); };
+  return list.filter((x) => m === "amt" || m === "vol" || hasV(x)).slice().sort((a, b) => (hasV(b) ? val(b) : -Infinity) - (hasV(a) ? val(a) : -Infinity));
+}
 function tabLabel(tab) { const t = TABS.find(([k]) => k === tab); return t ? t[1] : "自選"; }
 
 function curTab() {
@@ -32,9 +47,10 @@ function tabList(tab) {
   const u = uni();
   if (tab === "hot") return hotList().map((h) => h.x);
   if (tab === "watch") return S.set.watch.map((k) => u.find((x) => x.key === k)).filter(Boolean);
-  if (tab === "tw") return u.filter((x) => x.market === "台股").slice().sort((a, b) => amtOfKey(b.key) - amtOfKey(a.key));
-  if (tab === "us") return u.filter((x) => x.market === "美股" && hasQuote(x) && hasBars(x)).slice().sort((a, b) => amtOfKey(b.key) - amtOfKey(a.key));
-  if (tab === "crypto") return u.filter((x) => x.market === "加密貨幣" && hasQuote(x));
+  if (tab === "tw") return applySort(u.filter((x) => x.market === "台股" && !isEtf(x)));
+  if (tab === "etf") return applySort(u.filter((x) => isEtf(x)));
+  if (tab === "us") return applySort(u.filter((x) => x.market === "美股" && hasQuote(x) && hasBars(x)));
+  if (tab === "crypto") return applySort(u.filter((x) => x.market === "加密貨幣" && hasQuote(x)));
   return idxList();
 }
 
@@ -171,7 +187,9 @@ export function searchBody() {
   const rows = shown.map((x) => hotRow(x, hm ? hm.get(x.key) : {})).join("");
   const body = rows ? rows
     : `<p class="small muted" style="padding:10px 0">${tab === "watch" ? "自選清單是空的，到個股頁按「＋自選」加入。" : "這個分類目前沒有可顯示的標的（報價或日 K 尚未就緒）。"}</p>`;
-  return `<div class="hsec-h">${tab === "hot" ? "🔥 熱門股票" : esc(label)}</div>
+  const dyOnly = (tab !== "tw");
+  const sortSel = sortOk(tab) && tab !== "watch" ? `<label class="hsort">排序<select data-act="search-sort">${SORTS.filter(([k]) => !(k === "dy" && dyOnly)).map(([k, l]) => `<option value="${k}"${sortKey() === k ? " selected" : ""}>${l}</option>`).join("")}</select></label>` : "";
+  return `<div class="hsec-h hsec-row"><span>${tab === "hot" ? "🔥 熱門股票" : esc(label)}</span>${sortSel}</div>
     <div class="hlist">${body}</div>
     ${all.length > shown.length ? `<button type="button" class="hmore" data-act="search-more">載入更多</button>` : ""}`;
 }
@@ -377,6 +395,13 @@ export function bindSearchInput() {
 }
 
 /* 切換分類：記住上次選的分頁，重置分批 */
+document.addEventListener("change", (e) => {
+  const el = e.target.closest && e.target.closest('select[data-act="search-sort"]');
+  if (!el) return;
+  S.searchSort = el.value; limit = STEP;
+  const box = $("#s-results"); if (box) box.innerHTML = searchBody();
+  const cnt = $("#s-count"); if (cnt) cnt.textContent = searchCount();
+});
 registerAction("search-tab", (el) => {
   const tab = el.dataset.tab;
   S.searchTab = tab;

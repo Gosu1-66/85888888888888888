@@ -600,3 +600,7 @@ body[data-route="search"] .ticker { display: none; }
 #stk-ind-row .chip2 { min-height: 26px; padding: 3px 11px; font-size: 12px; font-family: var(--mono); }
 #stk-ind-row .chip2:not(.on) { background: transparent; border-color: rgba(255,255,255,.10); color: #7c838c; }
 .xcard .legend { gap: 12px; font-size: 11.5px; opacity: .9; }
+
+.hsec-row { display:flex; align-items:center; justify-content:space-between; }
+.hsort { font-size:12px; font-weight:600; color:var(--muted,#8b93a1); display:flex; align-items:center; gap:6px; }
+.hsort select { background:#161a21; color:#e8eaee; border:1px solid #2a303a; border-radius:8px; padding:5px 22px 5px 9px; font-size:13px; font-weight:700; }
