@@ -17,11 +17,12 @@ const ago = (d) => {
 const okUrl = (u) => /^https:\/\/news\.cnyes\.com\//.test(u || "");
 const hasArt = (x) => x.id && NEWS?.art?.[x.id];
 function rows(list, n) {
-  return list.filter((x) => okUrl(x.u) && hasArt(x)).slice(0, n).map((x) =>
-    `<a class="nrow" href="#/news/${x.id}">
+  const cards = list.filter((x) => okUrl(x.u) && hasArt(x)).slice(0, n).map((x, i, a) =>
+    `<a class="ncard" href="#/news/${x.id}">
       <div class="nt">${esc(x.t)}</div>
-      <div class="nm2">${esc(x.s || "新聞")}${x.d ? " · " + ago(x.d) : ""}</div>
+      <div class="nm2">${esc(x.s || "新聞")}${x.d ? " · " + ago(x.d) : ""}<span class="ncnt">${i + 1}/${a.length}</span></div>
     </a>`).join("");
+  return cards ? `<div class="ncar">${cards}</div>` : "";
 }
 const TABS = [["tw", "台股"], ["us", "美股"], ["crypto", "加密"]];
 export function homeNewsCard() {
@@ -33,7 +34,7 @@ export function homeNewsCard() {
     <div class="sec-h"><span class="ico">📰</span><span class="tt">最新新聞</span><span class="sp"></span>
       <span class="rng-seg">${tabs.map(([k, l]) => `<button class="${k === cur ? "on" : ""}" data-act="news-tab" data-tab="${k}">${l}</button>`).join("")}</span></div>
     ${rows(m[cur], 8)}
-    <p class="small muted" style="margin-top:8px">新聞來源：鉅亨網，點開前往原文。</p>
+    <p class="small muted" style="margin-top:8px">← 左右滑動看更多｜新聞來源：鉅亨網</p>
   </section>`;
 }
 export function stockNewsCard(key) {

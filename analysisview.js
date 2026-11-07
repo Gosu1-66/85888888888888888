@@ -357,7 +357,7 @@ export function viewAnalysis() {
   const gParts = g ? g.parts.map((p) => `<div class="rrow" style="grid-template-columns:minmax(0,1fr) auto"><div class="rmid"><div class="nm">${esc(p.label)}</div></div><div class="rpx"><span class="small">${esc(p.text)}</span></div></div>`).join("") : "";
 
   /* ── 分頁（對齊參考 App：總覽／ETF／排行／籌碼／策略／風險） ── */
-  const TABS = ["總覽", "ETF", "排行", "籌碼", "策略", "風險"];
+  const TABS = ["總覽", "ETF", "排行", "籌碼", "風險"];
   const tab = TABS.includes(S.anaTab) ? S.anaTab : "總覽";
   const tabsHtml = `<div class="ana-tabs">${TABS.map((t) => `<button type="button" class="ana-tab${t === tab ? " on" : ""}" data-act="ana-tab" data-tab="${t}">${t}</button>`).join("")}</div>`;
 

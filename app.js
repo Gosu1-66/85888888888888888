@@ -24,12 +24,8 @@ const VIEWS = {
   radar: { view: viewRadar, after: null },
   inst: { view: viewInst, after: null },
   daytrade: { view: viewDaytrade, after: null },
-  scan: { view: viewScan, after: null },
   indexb: { view: viewIndex, after: null },
-  tools: { view: viewTools, after: null },
   heat: { view: viewHeat, after: null },
-  valuation: { view: viewValuation, after: null },
-  calc: { view: viewCalc, after: null },
   stock: { view: viewStock, after: afterStock },
   tvchart: { view: viewTvChart, after: afterTvChart },
   indexv: { view: viewIndexDetail, after: afterIndexDetail },
@@ -39,11 +35,10 @@ const VIEWS = {
   profile: { view: viewProfile, after: afterProfile },
   cloud: { view: viewCloud, after: null },
 };
-const NAV = { home: 0, analysis: 1, tools: 2, search: 3 };
+const NAV = { home: 0, analysis: 1, search: 2 };
 const NAV_ITEM = [
   { tab: "home", label: "首頁", icon: "🏠" },
   { tab: "analysis", label: "行情", icon: "📊" },
-  { tab: "tools", label: "智投", icon: "🎯" },
   { tab: "search", label: "搜尋", icon: "🔍" },
 ];
 const TITLE = {

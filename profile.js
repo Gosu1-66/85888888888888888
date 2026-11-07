@@ -486,8 +486,6 @@ export function viewProfile() {
     <div class="muted small">每次行情更新自動檢查：price-above / price-below 用現價；day-above / day-below 用當日漲跌幅。觸發後進入通知中心。</div>
   </div>
 
-  ${riskBlock}
-
   <div class="card">
     <div class="h2">個人設定</div>
     <div class="row" style="align-items:center">
@@ -506,27 +504,6 @@ export function viewProfile() {
       <button class="btn sm ${updown === "us" ? "primary" : ""}" data-act="updown-us">綠漲紅跌（美股）</button>
     </div>
     <div class="muted small" style="margin-top:6px">目前：${updown === "us" ? "綠漲紅跌" : "紅漲綠跌"}，套用到全站報價、熱力圖與走勢圖。</div>
-
-    <div class="h2" style="margin-top:16px">備份與還原</div>
-    <div class="row" style="justify-content:flex-start;flex-wrap:wrap">
-      <button class="btn" data-act="export">匯出備份檔</button>
-      <button class="btn" data-act="copy">複製備份文字</button>
-      <button class="btn" data-act="import">貼上 / 還原</button>
-    </div>
-
-    <div class="h2" style="margin-top:16px">資料狀態</div>
-    <div class="muted small">
-      投資組合 ${(S.data.portfolios || []).length} 個｜持股 ${(S.data.assets || []).length} 筆｜交易 ${(S.data.trades || []).length} 筆<br>
-      行情：幣安 ${esc(status.binance || "—")}｜台股檔案 ${esc(status.file || "—")}${status.fileUpdated ? `｜更新於 ${esc(ageText(status.fileUpdated))}` : ""}
-    </div>
-
-    <div class="h2" style="margin-top:16px">手動報價覆蓋</div>
-    ${manualRows}
-    <button class="btn sm" data-act="manual-open">＋ 設定手動報價</button>
-
-    <div class="h2" style="margin-top:16px">範例資料</div>
-    <p class="muted small">載入 3 筆假資料到「範例組合」，方便快速體驗功能。</p>
-    <button class="btn" data-act="demo">載入範例資料</button>
 
     <div class="h2" style="margin-top:16px">自訂首頁入口</div>
     <button class="btn" data-act="edit-entries">編輯首頁顯示</button>
