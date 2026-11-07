@@ -13,14 +13,19 @@ const tag = (x, n) => { const m = x.match(new RegExp(`<${n}[^>]*>([\\s\\S]*?)</$
 // 鉅亨網公開新聞 API；每則連結為 https://news.cnyes.com/news/id/<newsId>（真實原文頁）
 const strip = (x) => String(x || "").replace(/<[^>]+>/g, "").replace(/&nbsp;/g, " ").trim();
 const ART = {};   // newsId → 內文純文字（站內閱讀用）
-const toText = (h) => String(h || "").replace(/<\/(p|div|h\d|li)>|<br\s*\/?>/gi, "\n").replace(/<[^>]+>/g, "").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/\n\s*\n+/g, "\n").trim();
+const unent = (t) => t.replace(/&nbsp;/g, " ").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, "&");
+// content 常是實體編碼的 HTML：先還原實體、再去標籤（兩輪以防雙重編碼）
+const toText = (h) => { let t = String(h || ""); for (let i = 0; i < 2; i++) t = unent(t).replace(/<\/(p|div|h\d|li)>|<br\s*\/?>/gi, "\n").replace(/<[^>]+>/g, ""); return t.replace(/[ \t]+/g, " ").replace(/\n\s*\n+/g, "\n").trim(); };
+// 只留導言（前幾段、約 300 字）+ 原文連結，不全文轉載
+const lead = (t) => { const out = []; let n = 0; for (const p of t.split("\n").map((x) => x.trim()).filter(Boolean)) { out.push(p); n += p.length; if (n >= 220 || out.length >= 3) break; } return out.join("\n").slice(0, 420); };
+const cover = (cs) => { const o = cs && (cs.m || cs.l || cs.s || cs.xs || Object.values(cs)[0]); return o && o.src ? o.src : ""; };
 function pick(j) {
   const it = j?.items ?? j?.data ?? j;
   const arr = Array.isArray(it) ? it : Array.isArray(it?.data) ? it.data : [];
   return arr.filter((x) => x && x.newsId && x.title).map((x) => {
-    const c = toText(x.content) || strip(x.summary);
-    if (c && !ART[x.newsId]) ART[x.newsId] = c.slice(0, 2500);
-    return { id: x.newsId, t: strip(x.title), s: "鉅亨網", u: `https://news.cnyes.com/news/id/${x.newsId}`, d: (x.publishAt || 0) * 1000 };
+    const c = lead(toText(x.content) || toText(x.summary));
+    if (c && !ART[x.newsId]) ART[x.newsId] = c;
+    return { id: x.newsId, img: cover(x.coverSrc), t: strip(x.title), s: "鉅亨網", u: `https://news.cnyes.com/news/id/${x.newsId}`, d: (x.publishAt || 0) * 1000 };
   });
 }
 async function api(url, n) {

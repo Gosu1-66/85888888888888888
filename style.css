@@ -637,3 +637,6 @@ body[data-route="market"] #app, body[data-route="profile"] #app, body[data-route
 .sec-h .meta { white-space: nowrap; font-size: 11px; }
 h1 { margin: 4px 0 12px; }
 .grid.g2 > :last-child:nth-child(odd) { grid-column: 1 / -1; }
+
+.ncard .nimg { width:100%; height:92px; object-fit:cover; border-radius:9px; margin-bottom:9px; background:#12151a; }
+.na-img { width:100%; max-height:200px; object-fit:cover; border-radius:12px; margin:10px 0 0; background:#12151a; }

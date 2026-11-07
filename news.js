@@ -15,10 +15,12 @@ const ago = (d) => {
   return m < 60 ? `${m || 1} 分鐘前` : m < 1440 ? `${Math.round(m / 60)} 小時前` : `${Math.round(m / 1440)} 天前`;
 };
 const okUrl = (u) => /^https:\/\/news\.cnyes\.com\//.test(u || "");
+const okImg = (u) => /^https:\/\//.test(u || "");
 const hasArt = (x) => x.id && NEWS?.art?.[x.id];
 function rows(list, n) {
   const cards = list.filter((x) => okUrl(x.u) && hasArt(x)).slice(0, n).map((x, i, a) =>
     `<a class="ncard" href="#/news/${x.id}">
+      ${okImg(x.img) ? `<img class="nimg" src="${esc(x.img)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">` : ""}
       <div class="nt">${esc(x.t)}</div>
       <div class="nm2">${esc(x.s || "新聞")}${x.d ? " · " + ago(x.d) : ""}<span class="ncnt">${i + 1}/${a.length}</span></div>
     </a>`).join("");
@@ -54,9 +56,10 @@ export function viewNews() {
   const paras = body.split("\n").filter(Boolean).map((p) => `<p>${esc(p)}</p>`).join("");
   return `<section class="xcard news-art"><h2 class="na-t">${esc(x.t)}</h2>
     <div class="nm2">${esc(x.s || "新聞")}${x.d ? " · " + new Date(x.d).toLocaleString("zh-TW", { hour12: false, month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }) : ""}</div>
+    ${okImg(x.img) ? `<img class="na-img" src="${esc(x.img)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : ""}
     <div class="na-b">${paras}</div>
-    <a class="btn" href="${esc(x.u)}" target="_blank" rel="noopener noreferrer" style="display:block;text-align:center;margin-top:12px">到鉅亨網閱讀原文 ›</a>
-    <p class="small muted" style="margin-top:8px">內文摘自鉅亨網，著作權屬原媒體。</p></section>`;
+    <a class="btn" href="${esc(x.u)}" target="_blank" rel="noopener noreferrer" style="display:block;text-align:center;margin-top:12px">閱讀全文（鉅亨網） ›</a>
+    <p class="small muted" style="margin-top:8px">僅顯示導言摘要，全文與圖片著作權屬鉅亨網。</p></section>`;
 }
 registerAction("news-tab", (el) => {
   S.newsTab = el.dataset.tab;
