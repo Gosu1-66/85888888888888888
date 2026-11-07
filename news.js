@@ -14,7 +14,7 @@ const ago = (d) => {
   const m = Math.max(0, Math.round((Date.now() - d) / 60000));
   return m < 60 ? `${m || 1} 分鐘前` : m < 1440 ? `${Math.round(m / 60)} 小時前` : `${Math.round(m / 1440)} 天前`;
 };
-const okUrl = (u) => /^https?:\/\//.test(u || "");
+const okUrl = (u) => /^https:\/\/news\.cnyes\.com\//.test(u || "");
 function rows(list, n) {
   return list.filter((x) => okUrl(x.u)).slice(0, n).map((x) =>
     `<a class="nrow" href="${esc(x.u)}" target="_blank" rel="noopener noreferrer">
@@ -32,7 +32,7 @@ export function homeNewsCard() {
     <div class="sec-h"><span class="ico">📰</span><span class="tt">最新新聞</span><span class="sp"></span>
       <span class="rng-seg">${tabs.map(([k, l]) => `<button class="${k === cur ? "on" : ""}" data-act="news-tab" data-tab="${k}">${l}</button>`).join("")}</span></div>
     ${rows(m[cur], 8)}
-    <p class="small muted" style="margin-top:8px">標題來自 Google 新聞，點開會前往原文網站。</p>
+    <p class="small muted" style="margin-top:8px">新聞來源：鉅亨網，點開前往原文。</p>
   </section>`;
 }
 export function stockNewsCard(key) {

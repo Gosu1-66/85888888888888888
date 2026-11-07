@@ -43,7 +43,7 @@ jobs:
       - name: Fetch crypto logos (CoinGecko)
         continue-on-error: true
         run: node scripts/fetch-crypto-logos.mjs
-      - name: Fetch news (Google News RSS)
+      - name: Fetch news (鉅亨網)
         continue-on-error: true
         run: node scripts/fetch-news.mjs
       - name: Commit & push updated data

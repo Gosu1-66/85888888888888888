@@ -1,5 +1,5 @@
 // sw.js — Service Worker：程式碼/資料採網路優先（部署即時生效），圖片等資源快取優先；離線時回快取殼。
-const VERSION = "gosu-v3-38";
+const VERSION = "gosu-v3-39";
 const SHELL = [
   "./",
   "index.html",
