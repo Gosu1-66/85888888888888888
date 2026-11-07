@@ -443,6 +443,12 @@ export function viewProfile() {
   return `
   <h1>個人中心</h1>
 
+  <div class="card pwa-card">
+    <div class="h2">安裝到手機主畫面</div>
+    <p class="muted small">像 App 一樣全螢幕開啟、免 App Store；iPhone 用 Safari「分享 → 加入主畫面」。</p>
+    <button class="btn" data-act="pwa-help">查看加入主畫面步驟</button>
+  </div>
+
   <div class="card">
     <div class="h2">資產摘要</div>
     <div class="grid g3">
