@@ -40,6 +40,11 @@ export function stockNewsCard(key) {
   const l = NEWS?.stocks?.[key]; if (!l || !l.some((x) => okUrl(x.u) && hasArt(x))) return "";
   return `<section class="xcard"><div class="sec-h"><span class="ico">📰</span><span class="tt">相關新聞</span></div>${rows(l, 5)}</section>`;
 }
+export function marketNewsCard(n = 6) {
+  const l = NEWS?.market?.tw; if (!l) return "";
+  const r = rows(l, n); if (!r) return "";
+  return `<section class="xcard"><div class="sec-h"><span class="ico">📰</span><span class="tt">相關新聞（鉅亨網）</span></div>${r}</section>`;
+}
 export function viewNews() {
   const id = decodeURIComponent((location.hash.split("/news/")[1] || "").split("?")[0]);
   const all = [...Object.values(NEWS?.market || {}).flat(), ...Object.values(NEWS?.stocks || {}).flat()];

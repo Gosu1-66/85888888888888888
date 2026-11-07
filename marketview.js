@@ -1,6 +1,7 @@
 // marketview.js — 盤勢解析（首頁 AI 卡點進來）：拆解「偏多／偏空」的每一項依據，全部取自 market.json
 import { esc, fmt, pct, tone } from "./ui.js";
 import { S } from "./state.js";
+import { marketNewsCard } from "./news.js";
 import { indices, institutions, breadth, industryFlow, marketTone } from "./marketdata.js";
 
 const yi = (n) => (n == null || isNaN(n) ? "—" : fmt(Math.round(Math.abs(n) / 1e8), 0) + "億");
@@ -51,6 +52,7 @@ export function viewMarket() {
       <p class="mv-sum">${rows.length} 項指標中，${bear} 項偏空、${bull} 項偏多。判斷方式：加權指數漲跌、漲跌家數、三大法人買賣超三項各給 +1／−1，合計 ≥ +2 偏多、≤ −2 偏空，其餘中性（目前 ${t.score > 0 ? "+" : ""}${t.score}）。</p>
     </section>
     <section class="xcard"><div class="sec-h"><span class="ico">🔍</span><span class="tt">為什麼${esc(t.label)}</span></div>${rows.join("")}</section>
+    ${marketNewsCard()}
     <section class="xcard"><div class="sec-h"><span class="ico">➡️</span><span class="tt">繼續看</span></div>
       <a class="mv-link" href="#/inst">法人買超排行 ›</a>
       <a class="mv-link" href="#/heat">市場熱力圖（類股強弱） ›</a>
