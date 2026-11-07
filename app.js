@@ -1,5 +1,5 @@
 // app.js — 入口：路由、渲染、啟動流程、全域事件、頂部列與指數跑馬燈。
-import { loadNews } from "./news.js";
+import { loadNews, viewNews } from "./news.js";
 import { $, registerAction, fireAction, parseRoute, toast } from "./ui.js";
 import { S, save, uni, evaluateAlerts } from "./state.js";
 import { refreshQuotes, loadLogos, loadCryptoLogos } from "./quotes.js";
@@ -32,6 +32,7 @@ const VIEWS = {
   stock: { view: viewStock, after: afterStock },
   tvchart: { view: viewTvChart, after: afterTvChart },
   indexv: { view: viewIndexDetail, after: afterIndexDetail },
+  news: { view: viewNews, after: null },
   portfolio: { view: viewPortfolios, after: afterPortfolios },
   profile: { view: viewProfile, after: afterProfile },
   cloud: { view: viewCloud, after: null },
@@ -46,9 +47,9 @@ const NAV_ITEM = [
 const TITLE = {
   home: "概覽", analysis: "行情", tools: "智投", search: "搜尋", radar: "市場雷達", inst: "外資買超",
   daytrade: "當沖排行", scan: "技術面選股", indexb: "指數總覽", heat: "市場熱力圖", valuation: "估值情境器", calc: "試算工具",
-  portfolio: "投資組合", profile: "我的", cloud: "雲端同步", stock: "個股", indexv: "指數詳情", tvchart: "完整圖表",
+  portfolio: "投資組合", profile: "我的", cloud: "雲端同步", stock: "個股", indexv: "指數詳情", news: "新聞", tvchart: "完整圖表",
 };
-const SUB_PAGE = new Set(["radar", "inst", "daytrade", "scan", "indexb", "indexv", "heat", "valuation", "calc", "portfolio", "profile", "cloud", "stock", "tvchart"]);
+const SUB_PAGE = new Set(["radar", "inst", "daytrade", "scan", "indexb", "indexv", "news", "heat", "valuation", "calc", "portfolio", "profile", "cloud", "stock", "tvchart"]);
 
 /* ── 指數跑馬燈 ── */
 function fillTicker() {

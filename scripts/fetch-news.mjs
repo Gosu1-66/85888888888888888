@@ -12,12 +12,16 @@ const tag = (x, n) => { const m = x.match(new RegExp(`<${n}[^>]*>([\\s\\S]*?)</$
 
 // 鉅亨網公開新聞 API；每則連結為 https://news.cnyes.com/news/id/<newsId>（真實原文頁）
 const strip = (x) => String(x || "").replace(/<[^>]+>/g, "").replace(/&nbsp;/g, " ").trim();
+const ART = {};   // newsId → 內文純文字（站內閱讀用）
+const toText = (h) => String(h || "").replace(/<\/(p|div|h\d|li)>|<br\s*\/?>/gi, "\n").replace(/<[^>]+>/g, "").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/\n\s*\n+/g, "\n").trim();
 function pick(j) {
   const it = j?.items ?? j?.data ?? j;
   const arr = Array.isArray(it) ? it : Array.isArray(it?.data) ? it.data : [];
-  return arr.filter((x) => x && x.newsId && x.title).map((x) => ({
-    t: strip(x.title), s: "鉅亨網", u: `https://news.cnyes.com/news/id/${x.newsId}`, d: (x.publishAt || 0) * 1000,
-  }));
+  return arr.filter((x) => x && x.newsId && x.title).map((x) => {
+    const c = toText(x.content) || strip(x.summary);
+    if (c && !ART[x.newsId]) ART[x.newsId] = c.slice(0, 2500);
+    return { id: x.newsId, t: strip(x.title), s: "鉅亨網", u: `https://news.cnyes.com/news/id/${x.newsId}`, d: (x.publishAt || 0) * 1000 };
+  });
 }
 async function api(url, n) {
   const r = await fetch(url, { headers: { "User-Agent": UA, Accept: "application/json" } });
@@ -29,7 +33,7 @@ const rss = (q, n = 8) => api(`https://api.cnyes.com/media/api/v1/search?q=${enc
 
 let prev = {};
 try { prev = JSON.parse(readFileSync(join(ROOT, "news.json"), "utf8")); } catch {}
-const news = { updated: new Date().toISOString(), market: Object.fromEntries(Object.entries(prev.market || {}).map(([k, l]) => [k, l.filter((x) => x.u?.startsWith("https://news.cnyes.com/"))])), stocks: {} };
+const news = { updated: new Date().toISOString(), art: {}, market: Object.fromEntries(Object.entries(prev.market || {}).map(([k, l]) => [k, l.filter((x) => x.u?.startsWith("https://news.cnyes.com/"))])), stocks: {} };
 for (const [k, f] of [["tw", () => cat("tw_stock")], ["us", () => cat("us_stock")], ["crypto", () => rss("加密貨幣 比特幣", 10)]]) {
   try { const l = await f(); if (l.length) news.market[k] = l; } catch (e) { console.log("market", k, e.message); }
   await sleep(400);
@@ -46,5 +50,7 @@ for (const [k, , name] of top) {
 for (const [k, q] of extra) { try { const l = await rss(q, 6); if (l.length) news.stocks[k] = l; } catch {} await sleep(400); }
 // 沒抓到新資料時保留舊的，避免整頁變空
 for (const k of Object.keys(prev.stocks || {})) { const old = (prev.stocks[k] || []).filter((x) => x.u?.startsWith("https://news.cnyes.com/")); if (!news.stocks[k] && old.length) news.stocks[k] = old; }
+const used = new Set([...Object.values(news.market).flat(), ...Object.values(news.stocks).flat()].map((x) => x.id).filter(Boolean));
+for (const id of used) if (ART[id]) news.art[id] = ART[id];
 writeFileSync(join(ROOT, "news.json"), JSON.stringify(news));
 console.log("news:", Object.values(news.market).map((l) => l.length), "stocks:", Object.keys(news.stocks).length);
