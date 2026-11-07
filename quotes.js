@@ -35,6 +35,7 @@ export function tvSymbol(key, info = {}) {
     const otc = /上櫃|OTC|TPEX/.test(board);
     return `${otc ? "TPEX" : "TWSE"}:${symbol}`;
   }
+  if (market === "加密貨幣") return `BINANCE:${binanceSymbol(symbol)}`;
   if (market === "美股") {
     if (AMEX_LIST.has(symbol)) return `AMEX:${symbol}`;
     if (NYSE_LIST.has(symbol)) return `NYSE:${symbol}`;
