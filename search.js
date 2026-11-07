@@ -23,8 +23,7 @@ const amtOfKey = (k) => { const q = S.quotes[k]; return q ? (q.vol || 0) * (q.pr
 function tabLabel(tab) { const t = TABS.find(([k]) => k === tab); return t ? t[1] : "自選"; }
 
 function curTab() {
-  let t = S.searchTab;
-  if (!t) { try { t = localStorage.getItem(TAB_KEY); } catch { t = null; } }
+  const t = S.searchTab;   // 每次打開 App 都從「熱門」開始（同一次使用期間記住切到哪個分頁）
   return TABS.some(([k]) => k === t) ? t : "hot";
 }
 
@@ -129,6 +128,7 @@ export function searchBody() {
       String(x.symbol || "").toUpperCase().includes(Q) ||
       String(x.name || "").includes(q) ||
       String(x.industry || "").includes(q) ||
+      companyDesc(x.key).includes(q) ||
       (x.themes || []).some((t) => String(t).includes(q)) ||
       String(x.market || "").includes(q)
     );
