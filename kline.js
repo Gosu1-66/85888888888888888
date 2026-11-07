@@ -175,6 +175,17 @@ export function mountCandle(mainEl, subEl, candles, opts = {}) {
   };
   setBars(opts.range || 126);
 
+  // 指標開關（只作用在自己的 Lightweight Charts 圖）
+  const indState = { ma: true, vol: true, rsi: true, macd: true, ...(opts.indicators || {}) };
+  const applyIndicators = (next) => {
+    Object.assign(indState, next || {});
+    for (const s of [ma5, ma20, ma60]) s.applyOptions({ visible: indState.ma });
+    vol.applyOptions({ visible: indState.vol });
+    rsiSeries.applyOptions({ visible: indState.rsi });
+    for (const s of [difSeries, deaSeries, histSeries]) s.applyOptions({ visible: indState.macd });
+  };
+  applyIndicators();
+
   const ro = new ResizeObserver(() => {
     const w1 = mainEl.clientWidth;
     if (w1 > 0) main.applyOptions({ width: w1 });
@@ -186,6 +197,7 @@ export function mountCandle(mainEl, subEl, candles, opts = {}) {
 
   return {
     setBars,
+    setIndicators: applyIndicators,
     destroy() { ro.disconnect(); main.remove(); sub.remove(); },
     mainChart: main,
   };
