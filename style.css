@@ -551,3 +551,34 @@ body.kfs-open nav.tabs, body.kfs-open .bottom-nav, body.kfs-open .ticker { visib
 .xcard.kfs .lwc-ohlc { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 11px; margin-bottom: 2px; }
 .xcard.kfs .lwc-ohlc br { display: none; }
 .xcard.kfs #stk-main { min-height: 0; }
+
+/* ── 搜尋頁（參考 App：大搜尋框＋熱門股票清單） ── */
+body[data-route="search"] .ticker { display: none; }
+.hsearch { position: sticky; top: var(--top-h, 0); z-index: 5; background: var(--bg, #07090c); padding: 8px 0 6px; }
+.hbox { display: flex; align-items: center; gap: 10px; height: 52px; padding: 0 16px; border-radius: 26px; background: #15181d; border: 1px solid rgba(217,177,106,.28); color: #8b939e; }
+.hbox input { flex: 1; min-width: 0; background: transparent; border: 0; outline: none; color: var(--fg, #e8ecf1); font-size: 16px; }
+.hbox input::placeholder { color: #7c838c; }
+.htabs { display: flex; gap: 18px; overflow-x: auto; scrollbar-width: none; padding: 10px 4px 0; }
+.htabs::-webkit-scrollbar { display: none; }
+.htabs button { flex: 0 0 auto; background: none; border: 0; padding: 4px 0; color: #7c838c; font-size: 14px; font-weight: 600; border-bottom: 2px solid transparent; cursor: pointer; }
+.htabs button.on { color: #f0cf8e; border-bottom-color: #d9b16a; }
+.hsec-h { font-size: 17px; font-weight: 800; margin: 14px 2px 4px; }
+.hlist { display: flex; flex-direction: column; }
+.hrow { display: grid; grid-template-columns: 46px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 12px 2px; border-bottom: 1px solid rgba(255,255,255,.06); text-decoration: none; color: inherit; }
+.hlogo { width: 46px; height: 46px; border-radius: 12px; overflow: hidden; display: flex; }
+.hlogo > span { width: 100% !important; height: 100% !important; border-radius: 12px !important; position: relative; display: flex; align-items: center; justify-content: center; }
+.hmid { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.hnm { display: flex; align-items: center; gap: 6px; white-space: nowrap; overflow: hidden; }
+.hnm b { font-size: 16px; font-weight: 800; overflow: hidden; text-overflow: ellipsis; }
+.hrank { font-size: 12px; font-weight: 800; flex: 0 0 auto; }
+.hrank.up { color: var(--up, #e5484d); } .hrank.down { color: var(--down, #22c55e); } .hrank.new { color: #ff8a3d; }
+.hsub { display: flex; align-items: center; gap: 6px; white-space: nowrap; overflow: hidden; }
+.hcode { font-family: var(--mono); font-size: 13px; color: #8b939e; }
+.hchip { font-size: 11px; padding: 1px 6px; border-radius: 6px; border: 1px solid rgba(255,255,255,.16); color: #b9c0c9; flex: 0 0 auto; }
+.hchip.board { color: #8fb4ff; border-color: rgba(143,180,255,.4); background: rgba(143,180,255,.08); }
+.hdesc { font-size: 12px; color: #7c838c; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hpx { text-align: right; display: flex; flex-direction: column; gap: 3px; font-family: var(--mono); }
+.hpx b { font-size: 17px; font-weight: 800; }
+.hpx span { font-size: 12.5px; }
+.hmore { width: 100%; margin: 12px 0 4px; height: 42px; border-radius: 12px; background: #15181d; border: 1px solid rgba(255,255,255,.08); color: #cfd5dd; font-size: 14px; cursor: pointer; }
+.co-desc { font-size: 12px; color: #8b939e; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

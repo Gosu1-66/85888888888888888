@@ -13,6 +13,7 @@ import { viewCloud } from "./cloud.js";
 import { viewRadar, viewInst, viewDaytrade, viewScan, viewIndex, viewTools, viewHeat, viewValuation, viewCalc } from "./tools.js";
 import { viewStock, afterStock, viewTvChart, afterTvChart } from "./stock.js";
 import { viewIndexDetail, afterIndexDetail } from "./indexview.js";
+import { loadCompanies } from "./companies.js";
 
 const VIEWS = {
   home: { view: viewHome, after: afterHome },
@@ -110,6 +111,7 @@ function render() {
     const sameView = S.__renderHash === hashNow;
     const keepY = window.scrollY || 0;
     S.tab = name;
+    document.body.dataset.route = name;
     const sp = params.get("s");
     S.q = sp && !String(sp).includes(":") ? sp : "";
     const app = $("#app");
@@ -188,6 +190,7 @@ export async function refreshAll(silent = false) {
 
 async function boot() {
   render();
+  loadCompanies();
   try { await refreshAll(true); } catch (e) { console.error("[boot]", e); }
   initCloud();
 }

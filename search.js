@@ -8,11 +8,12 @@ import { instRank, daytrade } from "./marketdata.js";
 import { buildSeries } from "./indicators.js";
 import { drawTechnical } from "./charts.js";
 import { stockLogo, sparkLine } from "./home.js";
+import { companyDesc } from "./companies.js";
 
 /* ── 搜尋頁：分類分頁 + 分批載入 ── */
 const TAB_KEY = "gu1.searchTab";
 const STEP = 30;
-const TABS = [["watch", "自選"], ["tw", "台股"], ["us", "美股"], ["crypto", "加密"], ["idx", "指數"]];
+const TABS = [["hot", "熱門"], ["watch", "自選"], ["tw", "台股"], ["us", "美股"], ["crypto", "加密"], ["idx", "指數"]];
 let limit = STEP;
 
 const hasQuote = (x) => { const q = S.quotes[x.key]; return !!(q && typeof q.price === "number"); };
@@ -24,17 +25,78 @@ function tabLabel(tab) { const t = TABS.find(([k]) => k === tab); return t ? t[1
 function curTab() {
   let t = S.searchTab;
   if (!t) { try { t = localStorage.getItem(TAB_KEY); } catch { t = null; } }
-  return TABS.some(([k]) => k === t) ? t : "watch";
+  return TABS.some(([k]) => k === t) ? t : "hot";
 }
 
 /** 某一分類要顯示的標的（美股與加密只留有報價且有日 K 的，避免點進空頁） */
 function tabList(tab) {
   const u = uni();
+  if (tab === "hot") return hotList().map((h) => h.x);
   if (tab === "watch") return S.set.watch.map((k) => u.find((x) => x.key === k)).filter(Boolean);
   if (tab === "tw") return u.filter((x) => x.market === "台股").slice().sort((a, b) => amtOfKey(b.key) - amtOfKey(a.key));
   if (tab === "us") return u.filter((x) => x.market === "美股" && hasQuote(x) && hasBars(x)).slice().sort((a, b) => amtOfKey(b.key) - amtOfKey(a.key));
   if (tab === "crypto") return u.filter((x) => x.market === "加密貨幣" && hasQuote(x));
   return u.filter((x) => x.market === "指數");
+}
+
+/* ── 熱門股票：台股依今日成交值排名，和前一交易日的成交值排名比較（^ 上升／v 下降／NEW 新進榜） ── */
+const HOT_N = 300;
+let hotCache = null;
+function hotList() {
+  const stamp = (S.file && S.file.updated) || "" ;
+  if (hotCache && hotCache.stamp === stamp && hotCache.n === Object.keys(S.quotes).length) return hotCache.list;
+  const tw = uni().filter((x) => x.market === "台股" && hasQuote(x) && hasBars(x));
+  const today = tw.map((x) => ({ x, a: amtOfKey(x.key) })).filter((r) => r.a > 0).sort((a, b) => b.a - a.a);
+  const prevAmt = (k) => { const c = S.file?.candles?.[k] || []; const r = c[c.length - 2]; return r ? (Array.isArray(r) ? r[4] * r[5] : r.c * r.v) : 0; };
+  const prev = tw.map((x) => ({ k: x.key, a: prevAmt(x.key) })).filter((r) => r.a > 0).sort((a, b) => b.a - a.a);
+  const prevRank = new Map(prev.map((r, i) => [r.k, i + 1]));
+  const list = today.slice(0, HOT_N).map((r, i) => {
+    const pr = prevRank.get(r.x.key);
+    return { x: r.x, delta: pr ? pr - (i + 1) : null, isNew: !pr || pr > 100 };
+  });
+  hotCache = { stamp, n: Object.keys(S.quotes).length, list };
+  return list;
+}
+
+// 產業小標籤顏色（同一產業固定同色）
+const IND_COLOR = { "半導體": "#4f9cf9", "ETF": "#9aa2ad", "電子零組件": "#33c3a3", "金融保險": "#e0b25a", "電腦及週邊設備": "#7f8cff", "光電": "#c084fc", "通信網路": "#38bdf8", "航運": "#60a5fa", "紡織纖維": "#f472b6", "生技醫療": "#4ade80" };
+function indChip(ind) {
+  if (!ind) return "";
+  let h = 0; for (const c of String(ind)) h = (h * 31 + c.charCodeAt(0)) % 360;
+  const col = IND_COLOR[ind] || `hsl(${h} 65% 66%)`;
+  return `<span class="hchip" style="color:${col};border-color:${col}55;background:${col}14">${esc(ind)}</span>`;
+}
+
+/** 參考 App 風格的一列：logo｜名稱＋排名變化／代號＋上市櫃＋產業／一句話簡介｜價格＋漲跌 */
+function hotRow(x, meta = {}) {
+  if (x.market === "指數") return searchRow(x);
+  const k = x.key, qq = S.quotes[k];
+  const isCrypto = String(k).startsWith("加密貨幣:");
+  const bars = (S.file?.candles?.[k] || []).length;
+  const openable = !!(qq && typeof qq.price === "number" && (isCrypto || bars >= 60));
+  if (!openable) return "";
+  const prev = qq.prev || (qq.change != null && qq.price ? qq.price / (1 + qq.change / 100) : null);
+  const chg = prev ? qq.price - prev : null;
+  const chgPct = qq.change != null ? qq.change : prev ? (chg / prev) * 100 : null;
+  const t = tone(chgPct);
+  const dlt = meta.isNew ? `<span class="hrank new">NEW</span>`
+    : meta.delta > 0 ? `<span class="hrank up">^${meta.delta}</span>`
+    : meta.delta < 0 ? `<span class="hrank down">v${-meta.delta}</span>` : "";
+  const board = x.market === "台股" ? (x.board || qq.board || "") : x.market === "美股" ? "美股" : "";
+  const desc = companyDesc(k);
+  const dp = (n) => (Math.abs(n) >= 1000 ? 0 : Math.abs(n) >= 100 ? 1 : 2);
+  return `<a class="hrow" href="#/stock/${encodeURIComponent(k)}">
+    <span class="hlogo">${stockLogo(k, x.name, x.symbol, "logo-in")}</span>
+    <span class="hmid">
+      <span class="hnm"><b>${esc(x.name)}</b>${dlt}</span>
+      <span class="hsub"><span class="hcode">${esc(x.symbol)}</span>${board ? `<span class="hchip board">${esc(board)}</span>` : ""}${indChip(x.industry)}</span>
+      ${desc ? `<span class="hdesc">${esc(desc)}</span>` : ""}
+    </span>
+    <span class="hpx ${t}">
+      <b>${fmt(qq.price, dp(qq.price))}</b>
+      <span>${chg != null ? `${chg > 0 ? "+" : ""}${fmt(chg, dp(qq.price))}` : ""}${chgPct != null ? ` | ${chgPct > 0 ? "+" : ""}${chgPct.toFixed(2)}%` : ""}</span>
+    </span>
+  </a>`;
 }
 
 function searchRow(x) {
@@ -71,11 +133,11 @@ export function searchBody() {
       String(x.market || "").includes(q)
     );
     // 沒報價的一律不顯示（美股等資料未就緒者不列）
-    const list = hits.filter((x) => hasQuote(x) || x.market === "台股").slice(0, STEP);
+    const list = hits.filter((x) => hotRow(x)).slice(0, STEP);
     return list.length
       ? `<section class="xcard">
           <div class="sec-h"><span class="tt">搜尋結果</span><span class="sp"></span><span class="meta">${list.length}${hits.length > list.length ? `／${hits.length}` : ""}</span></div>
-          ${list.map(searchRow).join("")}
+          ${list.map((x) => hotRow(x)).join("")}
         </section>`
       : `<section class="xcard"><p class="small muted" style="padding:6px 0">找不到「${esc(q)}」，換個代號或名稱試試。</p></section>`;
   }
@@ -83,14 +145,13 @@ export function searchBody() {
   const all = tabList(tab);
   const shown = all.slice(0, limit);
   const label = tabLabel(tab);
-  const body = shown.length
-    ? shown.map(searchRow).join("")
+  const hm = tab === "hot" ? new Map(hotList().map((h) => [h.x.key, h])) : null;
+  const rows = shown.map((x) => hotRow(x, hm ? hm.get(x.key) : {})).join("");
+  const body = rows ? rows
     : `<p class="small muted" style="padding:10px 0">${tab === "watch" ? "自選清單是空的，到個股頁按「＋自選」加入。" : "這個分類目前沒有可顯示的標的（報價或日 K 尚未就緒）。"}</p>`;
-  return `<section class="xcard">
-    <div class="sec-h"><span class="tt">${esc(label)}</span><span class="sp"></span><span class="meta">${shown.length}／${all.length}</span></div>
-    ${body}
-    ${all.length > shown.length ? `<button type="button" class="btn" data-act="search-more" style="width:100%;margin-top:10px">載入更多（還有 ${all.length - shown.length} 檔）</button>` : ""}
-  </section>`;
+  return `<div class="hsec-h">${tab === "hot" ? "🔥 熱門股票" : esc(label)}</div>
+    <div class="hlist">${body}</div>
+    ${all.length > shown.length ? `<button type="button" class="hmore" data-act="search-more">載入更多</button>` : ""}`;
 }
 
 /** 搜尋範圍與命中數文字 */
@@ -109,19 +170,10 @@ export function searchCount() {
 /* ── 列表視圖 ── */
 function viewList() {
   const tab = curTab();
-  const u = uni();
-  const quick = S.set.watch.map((k) => {
-    const x = u.find((y) => y.key === k);
-    return x ? `<a class="qchip" href="#/stock/${encodeURIComponent(k)}">${esc(x.name)}</a>` : "";
-  }).join("");
-  return `<section class="xcard" style="padding:12px 14px">
-    <div class="search-box"><span class="muted">🔍</span><input id="search-in" placeholder="搜尋股票、產業、題材、功能" value="${esc(S.q || "")}" autocomplete="off"></div>
-    ${quick ? `<div class="qchips">${quick}</div>` : ""}
-    <div class="chiprow" style="margin:10px 0 0">
-      ${TABS.map(([k, l]) => `<button type="button" class="chip2 ${tab === k ? "on" : ""}" data-act="search-tab" data-tab="${k}">${esc(l)}</button>`).join("")}
-    </div>
-    <div class="small muted" id="s-count" style="margin-top:8px">${searchCount()}</div>
-  </section>
+  return `<div class="hsearch">
+    <div class="hbox"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="search-in" placeholder="搜尋股票、產業、題材、功能或頁面" value="${esc(S.q || "")}" autocomplete="off" enterkeyhint="search"></div>
+    <div class="htabs">${TABS.map(([k, l]) => `<button type="button" class="${tab === k ? "on" : ""}" data-act="search-tab" data-tab="${k}">${esc(l)}</button>`).join("")}</div>
+  </div>
   <div id="s-results">${searchBody()}</div>`;
 }
 

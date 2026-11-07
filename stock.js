@@ -7,6 +7,7 @@ import { mountCandle } from "./kline.js";
 import { stockLogo, sparkLine } from "./home.js";
 import { industryFlow, instRank, institutions, daytrade, etfMetrics, indices } from "./marketdata.js";
 import { loadBinanceCandles, tvSymbol } from "./quotes.js";
+import { companyDesc } from "./companies.js";
 
 /* ── K 線週期與指標偏好 ── */
 const PERIOD_KEY = "gu1.stkPeriod";
@@ -109,6 +110,7 @@ export function viewStock() {
       <div style="flex:1;min-width:0">
         <div class="nm">${esc(u.name)}</div>
         <div class="cd">${esc(u.symbol)} · ${esc(u.board || (q?.source === "binance" ? "即時" : "上市"))}${u.market === "加密貨幣" ? " · 加密貨幣" : ""}</div>
+        ${companyDesc(key) ? `<div class="co-desc">${esc(companyDesc(key))}</div>` : ""}
       </div>
       <div class="stk-px">
         <div class="p ${q ? tone(chg) : ""}">${q ? fmt(q.price, 2) : "—"}</div>
