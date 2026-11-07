@@ -6,6 +6,23 @@ import { buildSeries, rsi } from "./indicators.js";
 import { mountCandle } from "./kline.js";
 import { stockLogo, sparkLine } from "./home.js";
 import { industryFlow, instRank, institutions, daytrade, etfMetrics, indices } from "./marketdata.js";
+import { loadBinanceCandles, tvSymbol } from "./quotes.js";
+
+/* ── K 線週期與指標偏好 ── */
+const PERIOD_KEY = "gu1.stkPeriod";
+const IND_KEY = "gu1.stkInd";
+const PERIODS = [["1m", "1M"], ["5m", "5M"], ["15m", "15M"], ["1h", "1H"], ["4h", "4H"], ["8h", "8H"], ["1d", "日線"]];
+const INDS = [["ma", "MA"], ["vol", "量"], ["rsi", "RSI"], ["macd", "MACD"]];
+const TV_INTERVAL = { "1m": "1", "5m": "5", "15m": "15", "1h": "60", "4h": "240", "8h": "480" };
+const readLS = (k) => { try { return localStorage.getItem(k); } catch { return null; } };
+const writeLS = (k, v) => { try { localStorage.setItem(k, v); } catch { /* 忽略 */ } };
+function stkPeriod() {
+  const p = S.stkPeriod || readLS(PERIOD_KEY) || "1d";
+  return PERIODS.some(([k]) => k === p) ? p : "1d";
+}
+function stkInd() {
+  try { return JSON.parse(readLS(IND_KEY) || "{}") || {}; } catch { return {}; }
+}
 
 const TABS = ["概覽", "AI 研究", "ETF", "當沖", "法人", "主力"];
 const yi = (n) => (n == null || isNaN(n)) ? "—" : fmt(Math.round(n / 1e8), 2) + "億";
@@ -109,16 +126,30 @@ export function viewStock() {
   const RANGES = [[21, "1月"], [63, "3月"], [126, "6月"], [243, "1年"]];
   const rng = Number(S.stkRange) || 126;
   const rangeChips = RANGES.map(([r, l]) => `<button class="chip2${r === rng ? " on" : ""}" data-act="stk-range" data-range="${r}">${l}</button>`).join("");
-  const kline = cs.length >= 5 ? `<section class="xcard" style="padding:12px 12px 8px">
+
+  const canIntraday = u.market === "加密貨幣" ? true : u.market === "美股" ? cs.length >= 60 : false;
+  const period = canIntraday ? stkPeriod() : "1d";
+  const isDaily = period === "1d";
+  const periodChips = PERIODS.filter(([p]) => p === "1d" || canIntraday)
+    .map(([p, l]) => `<button class="chip2${p === period ? " on" : ""}" data-act="stk-period" data-period="${p}">${l}</button>`).join("");
+  const useTv = !isDaily && canIntraday && u.market !== "加密貨幣";
+  const inds = stkInd();
+  const indChips = INDS.map(([k, l]) => `<button class="chip2${inds[k] !== false ? " on" : ""}" data-act="stk-ind" data-ind="${k}">${l}</button>`).join("");
+  const hasChart = cs.length >= 5 || u.market === "加密貨幣";
+
+  const kline = hasChart ? `<section class="xcard" style="padding:12px 12px 8px">
     <div class="chiprow" style="margin:0 0 6px">
-      ${rangeChips}
+      ${periodChips}
       <span style="flex:1"></span>
-      <span class="chip2" style="pointer-events:none">${cs.length} 根</span>
+      <span class="chip2" style="pointer-events:none" id="stk-bars">${isDaily ? `${cs.length} 根` : ""}</span>
     </div>
+    <div class="chiprow" id="stk-range-row" style="margin:0 0 6px${isDaily && !useTv ? "" : ";display:none"}">${rangeChips}</div>
+    <div class="chiprow" id="stk-ind-row" style="margin:0 0 8px${useTv ? ";display:none" : ""}">${indChips}</div>
     <div class="lwc-ohlc" id="stk-ohlc"></div>
+    <div id="stk-tv" class="tv-host" style="display:none"></div>
     <div id="stk-main" class="lwc-main"></div>
     <div id="stk-sub" class="lwc-sub"></div>
-    <div class="legend"><span><i style="background:var(--warn)"></i>MA5</span><span><i style="background:var(--blue)"></i>MA20</span><span><i style="background:var(--pink)"></i>MA60</span><span>成交量・RSI・MACD</span><span class="muted">拖曳平移・滾輪縮放・雙指縮放</span></div>
+    <div class="legend" id="stk-legend"><span><i style="background:var(--warn)"></i>MA5</span><span><i style="background:var(--blue)"></i>MA20</span><span><i style="background:var(--pink)"></i>MA60</span><span>成交量・RSI・MACD</span><span class="muted">拖曳平移・滾輪縮放・雙指縮放</span></div>
   </section>` : "";
 
   const tabs = avail.length > 1 ? `<div class="tabbar">${avail.map((t) => `<button type="button" class="${t === tab ? "on" : ""}" data-act="stock-tab" data-tab="${t}">${t}</button>`).join("")}</div>` : "";
@@ -258,34 +289,139 @@ function ohlcText(c, prev) {
     <span>開 ${fmt(c.o, 2)}</span><span>高 ${fmt(c.h, 2)}</span><span>低 ${fmt(c.l, 2)}</span>
     <span class="${tone(chg)}">收 ${fmt(c.c, 2)}</span>
     <span class="${tone(chg)}">${pc == null ? "" : (pc >= 0 ? "+" : "") + pc.toFixed(2) + "%"}</span>
-    <span class="muted">量 ${fmt(Math.round(c.v / 1000))} 張</span>`;
+    <span class="muted">${c.v == null ? "" : c.v >= 1000 ? `量 ${fmt(Math.round(c.v / 1000))} 張` : `量 ${fmt(c.v, 2)}`}</span>`;
 }
+
+/* ── TradingView 免費嵌入圖表（台股／美股分時週期） ── */
+let tvState = null;
+function mountTv(el, sym, interval) {
+  el.innerHTML = "";
+  const holder = document.createElement("div");
+  holder.className = "tradingview-widget-container";
+  holder.style.height = "100%";
+  const inner = document.createElement("div");
+  inner.className = "tradingview-widget-container__widget";
+  inner.style.height = "100%";
+  holder.appendChild(inner);
+  el.appendChild(holder);
+  const s = document.createElement("script");
+  s.type = "text/javascript";
+  s.async = true;
+  s.src = "https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js";
+  s.innerHTML = JSON.stringify({
+    autosize: true,
+    symbol: sym,
+    interval: String(interval),
+    timezone: "Asia/Taipei",
+    theme: "dark",
+    style: "1",
+    locale: "zh_TW",
+    withdateranges: true,
+    hide_side_toolbar: true,
+    allow_symbol_change: false,
+    save_image: false,
+    calendar: false,
+    studies: ["Volume@tv-basicstudies"],
+    support_host: "https://www.tradingview.com",
+  });
+  holder.appendChild(s);
+  tvState = { el, sym, interval };
+}
+
+let binanceSeq = 0;
 
 export function afterStock() {
   const key = decodeURIComponent((location.hash.split("/stock/")[1] || "").split("?")[0]);
-  const cs = candleObjs(key);
+  const u = uni().find((x) => x.key === key) || {
+    key, market: key.split(":")[0] || "台股", symbol: key.split(":")[1] || "", board: "",
+  };
+  const period = stkPeriod();
   const mainEl = $("#stk-main");
   const subEl = $("#stk-sub");
   const box = $("#stk-ohlc");
-  if (!mainEl || !subEl || cs.length < 5) return;
-  if (box) box.innerHTML = ohlcText(cs[cs.length - 1], cs[cs.length - 2]);
-
+  const tvEl = $("#stk-tv");
+  const legend = $("#stk-legend");
+  if (!mainEl || !subEl) return;
+  const cs = candleObjs(key);
+  const canIntraday = u.market === "加密貨幣" ? true : u.market === "美股" ? cs.length >= 60 : false;
+  const effPeriod = canIntraday ? period : "1d";
+  const isDaily = effPeriod === "1d";
   const range = Number(S.stkRange) || 126;
-  if (klineState && klineState.key === key && klineState.el === mainEl && mainEl.isConnected) {
-    klineState.range = range;
-    if (klineState.chart) klineState.chart.setBars(range);
+  const narrow = (mainEl.clientWidth || window.innerWidth) < 520;
+
+  const clearLwc = () => {
+    if (klineState) { try { klineState.chart && klineState.chart.destroy(); } catch (e) { /* ignore */ } klineState = null; }
+  };
+  const clearTv = () => { if (tvState) { tvState.el.innerHTML = ""; tvState = null; } };
+
+  // 台股／美股的分時週期 → TradingView 免費嵌入圖表
+  if (!isDaily && u.market !== "加密貨幣") {
+    const sym = tvSymbol(key, { board: u.board });
+    clearLwc();
+    mainEl.style.display = "none";
+    subEl.style.display = "none";
+    if (legend) legend.style.display = "none";
+    if (box) box.textContent = "";
+    if (tvEl) {
+      tvEl.style.display = "";
+      if (!tvState || tvState.sym !== sym || tvState.interval !== TV_INTERVAL[effPeriod]) mountTv(tvEl, sym, TV_INTERVAL[effPeriod]);
+    }
+    const barsEl = $("#stk-bars");
+    if (barsEl) barsEl.textContent = `${PERIODS.find(([p]) => p === effPeriod)[1]} · TradingView`;
     return;
   }
-  if (klineState) { try { klineState.chart && klineState.chart.destroy(); } catch (e) { /* ignore */ } klineState = null; }
+
+  clearTv();
+  if (tvEl) tvEl.style.display = "none";
+  mainEl.style.display = "";
+  subEl.style.display = "";
+  if (legend) legend.style.display = "";
+  const barsEl = $("#stk-bars");
+  if (barsEl) barsEl.textContent = isDaily ? `${cs.length} 根` : "";
+
+  // 加密貨幣分時：Binance klines 前端直取，一樣畫在自己的 Lightweight Charts
+  if (!isDaily && u.market === "加密貨幣") {
+    clearLwc();
+    const ind = stkInd();
+    const seq = ++binanceSeq;
+    if (box) box.textContent = "分時 K 線載入中…";
+    loadBinanceCandles(u.symbol, effPeriod, 400).then((rows) => {
+      if (seq !== binanceSeq || !mainEl.isConnected || !rows || !rows.length) return;
+      const chart = mountCandle(mainEl, subEl, rows, {
+        range: rows.length, mainHeight: narrow ? 250 : 320, subHeight: narrow ? 110 : 132, intraday: true, indicators: ind,
+        onHover: (d, time) => {
+          if (!box) return;
+          if (!d || !time) { box.innerHTML = ohlcText(rows[rows.length - 1], rows[rows.length - 2]); return; }
+          const raw = rows.find((c) => c.t === time);
+          box.innerHTML = ohlcText(raw || { t: time, o: d.open, h: d.high, l: d.low, c: d.close, v: 0 }, rows[rows.length - 2]);
+        },
+      });
+      klineState = { key, range, chart, el: mainEl, period: effPeriod };
+      if (box) box.innerHTML = ohlcText(rows[rows.length - 1], rows[rows.length - 2]);
+      if (barsEl) barsEl.textContent = `${rows.length} 根 · ${PERIODS.find(([p]) => p === effPeriod)[1]}`;
+    }).catch(() => { if (box) box.textContent = "此標的暫無分時 K 線。"; });
+    return;
+  }
+
+  // 日線：自己的 Lightweight Charts
+  if (!mainEl || !subEl || cs.length < 5) return;
+  if (box) box.innerHTML = ohlcText(cs[cs.length - 1], cs[cs.length - 2]);
+  const ind = stkInd();
+  if (klineState && klineState.key === key && klineState.el === mainEl && mainEl.isConnected) {
+    klineState.range = range;
+    if (klineState.chart) { klineState.chart.setBars(range); klineState.chart.setIndicators(ind); }
+    return;
+  }
+  clearLwc();
   if (!window.LightweightCharts) {
     mainEl.innerHTML = '<p class="small muted" style="padding:20px 4px">圖表元件載入中，請稍後重新整理。</p>';
     return;
   }
-  const narrow = (mainEl.clientWidth || window.innerWidth) < 520;
   const chart = mountCandle(mainEl, subEl, cs, {
     range,
     mainHeight: narrow ? 250 : 320,
     subHeight: narrow ? 110 : 132,
+    indicators: ind,
     onHover: (d, time) => {
       if (!box) return;
       if (!d || !time) { box.innerHTML = ohlcText(cs[cs.length - 1], cs[cs.length - 2]); return; }
@@ -293,12 +429,30 @@ export function afterStock() {
       box.innerHTML = ohlcText(raw || { t: time, o: d.open, h: d.high, l: d.low, c: d.close, v: 0 }, cs[cs.length - 2]);
     },
   });
-  klineState = { key, range, chart, el: mainEl };
+  klineState = { key, range, chart, el: mainEl, period: effPeriod };
 }
 /* ── actions ── */
 registerAction("stk-range", (el) => {
   S.stkRange = Number(el.dataset.range) || 126;
   window.dispatchEvent(new CustomEvent("portfolios:changed"));
+});
+
+/* 週期：日線用自己的 LWC；台股/美股分時用 TradingView，加密用 Binance */
+registerAction("stk-period", (el) => {
+  const p = el.dataset.period || "1d";
+  S.stkPeriod = p;
+  writeLS(PERIOD_KEY, p);
+  window.dispatchEvent(new CustomEvent("portfolios:changed"));
+});
+
+/* 指標開關（只作用在自己的 Lightweight Charts） */
+registerAction("stk-ind", (el) => {
+  const k = el.dataset.ind;
+  const cur = stkInd();
+  const next = { ...cur, [k]: cur[k] === false };   // 反向切換
+  writeLS(IND_KEY, JSON.stringify(next));
+  el.classList.toggle("on", next[k] !== false);
+  if (klineState && klineState.chart) klineState.chart.setIndicators(next);
 });
 
 registerAction("stock-tab", (el) => {
