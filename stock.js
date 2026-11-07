@@ -467,60 +467,54 @@ registerAction("stk-full", (el) => {
   location.hash = "#/tvchart/" + encodeURIComponent(key);
 });
 
-/* ── 完整圖表頁（TradingView Advanced Chart，全螢幕＋可返回） ── */
+/* ── 完整圖表頁（本機 Lightweight Charts 大圖 + TradingView 外連，保證不空白） ── */
 export function viewTvChart() {
   const key = decodeURIComponent((location.hash.split("/tvchart/")[1] || "").split("?")[0]);
   const u = uni().find((x) => x.key === key) || { key, market: key.split(":")[0] || "", symbol: key.split(":")[1] || "", board: "", name: key.split(":")[1] || "" };
   const sym = tvSymbol(key, { board: u.board }) || "";
+  const tvUrl = sym ? "https://www.tradingview.com/chart/?symbol=" + encodeURIComponent(sym) : "https://www.tradingview.com/";
   return `<section class="tvfull">
     <div class="tvfull-head">
       <div style="min-width:0">
         <div class="nm">${esc(u.name || u.symbol)}</div>
-        <div class="small muted">${esc(sym)} · TradingView 進階圖表（可加畫線工具、切週期）</div>
+        <div class="small muted">${esc(u.symbol)} · 完整圖表${sym ? "（TradingView 代碼 " + esc(sym) + "）" : ""}</div>
       </div>
-      <button type="button" class="btn sm" data-act="go-back">‹ 返回</button>
+      <div class="row" style="gap:8px;flex:0 0 auto">
+        <a class="btn sm" href="${esc(tvUrl)}" target="_blank" rel="noopener">TradingView ↗</a>
+        <button type="button" class="btn sm" data-act="go-back">‹ 返回</button>
+      </div>
     </div>
-    <div id="tvfull" class="tv-host tv-full" data-sym="${esc(sym)}"></div>
-    <p class="small muted" style="margin:8px 2px 0">圖表由 TradingView 提供；手機可雙指縮放，右上角可切換週期與全螢幕。</p>
+    <div id="tvfull-main" class="lwc-main"></div>
+    <div id="tvfull-sub" class="lwc-sub"></div>
+    <p class="small muted" style="margin:8px 2px 0">大圖用本機日線資料繪製（MA／量／RSI／MACD）；要畫線工具、更多週期可按「TradingView ↗」開官方圖表。</p>
   </section>`;
 }
 
 export function afterTvChart() {
-  const el = $("#tvfull");
-  if (!el || !el.dataset.sym) return;
-  el.innerHTML = "";
-  const holder = document.createElement("div");
-  holder.className = "tradingview-widget-container";
-  holder.style.height = "100%";
-  const inner = document.createElement("div");
-  inner.className = "tradingview-widget-container__widget";
-  inner.style.height = "100%";
-  holder.appendChild(inner);
-  el.appendChild(holder);
-  const s = document.createElement("script");
-  s.type = "text/javascript";
-  s.async = true;
-  s.src = "https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js";
-  s.innerHTML = JSON.stringify({
-    autosize: true,
-    symbol: el.dataset.sym,
-    interval: "60",
-    timezone: "Asia/Taipei",
-    theme: "dark",
-    style: "1",
-    locale: "zh_TW",
-    withdateranges: true,
-    hide_side_toolbar: false,
-    allow_symbol_change: false,
-    save_image: true,
-    calendar: false,
-    details: false,
-    studies: ["Volume@tv-basicstudies"],
-    support_host: "https://www.tradingview.com",
-  });
-  holder.appendChild(s);
+  const key = decodeURIComponent((location.hash.split("/tvchart/")[1] || "").split("?")[0]);
+  const mainEl = $("#tvfull-main");
+  const subEl = $("#tvfull-sub");
+  if (!mainEl || !subEl) return;
+  const [market, symRaw] = String(key).split(":");
+  const narrow = (mainEl.clientWidth || window.innerWidth) < 520;
+  const draw = (rows) => {
+    if (!rows || rows.length < 2) { mainEl.innerHTML = '<div class="empty small muted" style="padding:26px 0">此標的暫無 K 線資料。</div>'; return; }
+    try {
+      mountCandle(mainEl, subEl, rows, {
+        range: Math.min(rows.length, Number(S.stkRange) || 126),
+        mainHeight: narrow ? 300 : 460,
+        subHeight: narrow ? 150 : 170,
+        indicators: stkInd(),
+      });
+    } catch (e) { mainEl.innerHTML = '<div class="empty small muted" style="padding:26px 0">圖表載入失敗，請重新整理。</div>'; }
+  };
+  if (market === "加密貨幣") {
+    mainEl.innerHTML = '<div class="empty small muted" style="padding:26px 0">載入 Binance 日線…</div>';
+    loadBinanceCandles(String(symRaw || "").toUpperCase(), "1d", 400).then(draw).catch(() => draw(candleObjs(key)));
+  } else {
+    draw(candleObjs(key));
+  }
 }
-
 registerAction("stock-tab", (el) => {
   S.stockTab = el.dataset.tab;
   window.dispatchEvent(new CustomEvent("portfolios:changed"));
