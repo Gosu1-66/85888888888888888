@@ -11,7 +11,7 @@ import { viewPortfolios, afterPortfolios } from "./portfolios.js";
 import { viewProfile, afterProfile } from "./profile.js";
 import { viewCloud } from "./cloud.js";
 import { viewRadar, viewInst, viewDaytrade, viewScan, viewIndex, viewTools, viewHeat, viewValuation, viewCalc } from "./tools.js";
-import { viewStock, afterStock } from "./stock.js";
+import { viewStock, afterStock, viewTvChart, afterTvChart } from "./stock.js";
 import { viewIndexDetail, afterIndexDetail } from "./indexview.js";
 
 const VIEWS = {
@@ -28,6 +28,7 @@ const VIEWS = {
   valuation: { view: viewValuation, after: null },
   calc: { view: viewCalc, after: null },
   stock: { view: viewStock, after: afterStock },
+  tvchart: { view: viewTvChart, after: afterTvChart },
   indexv: { view: viewIndexDetail, after: afterIndexDetail },
   portfolio: { view: viewPortfolios, after: afterPortfolios },
   profile: { view: viewProfile, after: afterProfile },
@@ -43,9 +44,9 @@ const NAV_ITEM = [
 const TITLE = {
   home: "概覽", analysis: "行情", tools: "智投", search: "搜尋", radar: "市場雷達", inst: "外資買超",
   daytrade: "當沖排行", scan: "技術面選股", indexb: "指數總覽", heat: "市場熱力圖", valuation: "估值情境器", calc: "試算工具",
-  portfolio: "投資組合", profile: "我的", cloud: "雲端同步", stock: "個股", indexv: "指數詳情",
+  portfolio: "投資組合", profile: "我的", cloud: "雲端同步", stock: "個股", indexv: "指數詳情", tvchart: "完整圖表",
 };
-const SUB_PAGE = new Set(["radar", "inst", "daytrade", "scan", "indexb", "indexv", "heat", "valuation", "calc", "portfolio", "profile", "cloud", "stock"]);
+const SUB_PAGE = new Set(["radar", "inst", "daytrade", "scan", "indexb", "indexv", "heat", "valuation", "calc", "portfolio", "profile", "cloud", "stock", "tvchart"]);
 
 /* ── 指數跑馬燈 ── */
 function fillTicker() {
@@ -206,6 +207,39 @@ registerAction("go-cloud", () => { location.hash = "#/cloud"; });
 registerAction("go-back", () => { history.length > 1 ? history.back() : (location.hash = "#/home"); });
 registerAction("go-home", () => { location.hash = "#/home"; });
 
+/* 加入主畫面教學（iPhone Safari／Android Chrome） */
+registerAction("pwa-help", () => {
+  const iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const body = iOS
+    ? `<ol class="steps">
+        <li>用 <b>Safari</b> 開啟這個網站（一定要 Safari，Chrome 不行）。</li>
+        <li>點下方工具列的 <b>分享</b> 圖示（方框加箭頭 ⬆）。</li>
+        <li>在選單往下滑，選 <b>「加入主畫面」</b>。</li>
+        <li>按右上角 <b>「加入」</b>，桌面就會出現 GU1 圖示。</li>
+      </ol>
+      <p class="small muted">之後從主畫面開啟就是全螢幕、沒有網址列，也會有離線畫面。</p>`
+    : `<ol class="steps">
+        <li>用 <b>Chrome</b>（Android）或電腦版 Chrome／Edge 開啟這個網站。</li>
+        <li>Android：右上角 <b>⋮ 選單</b> → <b>「安裝應用程式」</b>或「加到主畫面」。</li>
+        <li>電腦：網址列右側的 <b>安裝圖示</b>，或選單 →「安裝 GU1」。</li>
+      </ol>
+      <p class="small muted">安裝後可離線開啟，圖示為 GU1。</p>`;
+  import("./ui.js").then(({ openSheet }) => openSheet(`<h2>加入主畫面</h2>${body}<button class="btn primary" data-act="close-sheet" style="margin-top:12px">知道了</button>`));
+});
+
+/* 有新版本時提示重新整理 */
+function showUpdateBar(reg) {
+  if ($("#update-bar")) return;
+  const bar = document.createElement("div");
+  bar.id = "update-bar";
+  bar.innerHTML = `<span>GU1 有新版本</span><button type="button" id="update-go">重新整理</button>`;
+  document.body.appendChild(bar);
+  $("#update-go").addEventListener("click", () => {
+    try { reg && reg.waiting && reg.waiting.postMessage({ type: "SKIP_WAITING" }); } catch { /* 忽略 */ }
+    setTimeout(() => location.reload(), 300);
+  });
+}
+
 document.addEventListener("click", (e) => {
   const d = e.target.closest?.("details.asset");
   if (!d) return;
@@ -215,7 +249,22 @@ document.addEventListener("click", (e) => {
 
 /* ── 版面骨架（頂部列 + 跑馬燈 + 內容 + 四頁導覽） ── */
 function init() {
-  if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("sw.js").then((reg) => {
+      if (reg.waiting && navigator.serviceWorker.controller) showUpdateBar(reg);
+      reg.addEventListener("updatefound", () => {
+        const w = reg.installing;
+        if (!w) return;
+        w.addEventListener("statechange", () => {
+          if (w.state === "installed" && navigator.serviceWorker.controller) showUpdateBar(reg);
+        });
+      });
+    }).catch(() => {});
+    // 回到前景時檢查一次是否有新版（PWA 常被留在背景很久）
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") navigator.serviceWorker.getRegistration().then((r) => r && r.update()).catch(() => {});
+    });
+  }
   document.documentElement.setAttribute("data-updown", S.set?.updown === "us" ? "us" : "tw");
   const root = $("#root");
   root.innerHTML = `<header class="topbar">
