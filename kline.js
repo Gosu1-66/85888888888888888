@@ -274,10 +274,54 @@ export function mountCandle(mainEl, subEl, candles, opts = {}) {
   setTimeout(() => kick(true), 60);
   setTimeout(() => kick(true), 220);
 
+  // ── 現價標籤下方的 K 棒倒數計時（像 TradingView）＋即時更新最後一根（加密貨幣） ──
+  let last = candles[candles.length - 1];
+  let cdEl = null, cdTimer = 0, liveTimer = 0, dead = false;
+  if (opts.countdownSec) {
+    if (getComputedStyle(mainEl).position === "static") mainEl.style.position = "relative";
+    cdEl = document.createElement("div");
+    cdEl.className = "lwc-cd";
+    mainEl.appendChild(cdEl);
+    const pad = (n) => String(n).padStart(2, "0");
+    const tick = () => {
+      if (dead || !cdEl) return;
+      const y = candle.priceToCoordinate(last.c);
+      if (y == null || y < 6 || y > hMain - 40) { cdEl.style.display = "none"; return; }
+      const sec = opts.countdownSec;
+      const rem = Math.max(0, Math.ceil(sec - ((Date.now() / 1000) % sec)));
+      const h = Math.floor(rem / 3600), m = Math.floor((rem % 3600) / 60), ss = rem % 60;
+      cdEl.textContent = h > 0 ? `${pad(h)}:${pad(m)}:${pad(ss)}` : `${pad(m)}:${pad(ss)}`;
+      let w = 70;
+      try { w = main.priceScale("right").width() || 70; } catch (e) { /* ignore */ }
+      cdEl.style.width = w + "px";
+      cdEl.style.top = Math.round(y + 12) + "px";
+      cdEl.style.background = last.c >= last.o ? up : down;
+      cdEl.style.display = "";
+    };
+    tick();
+    cdTimer = setInterval(tick, 1000);
+  }
+  if (opts.liveFetch) {
+    liveTimer = setInterval(async () => {
+      if (dead || document.hidden || !mainEl.isConnected) return;
+      try {
+        const rows = await opts.liveFetch();
+        if (dead || !rows) return;
+        for (const r of rows) {
+          if (r.t < last.t) continue;
+          candle.update({ time: r.t, open: r.o, high: r.h, low: r.l, close: r.c });
+          vol.update({ time: r.t, value: r.v, color: (r.c >= r.o ? up : down) + "66" });
+          last = r;
+        }
+        if (opts.onLive) opts.onLive(rows);
+      } catch (e) { /* 網路暫時失敗就等下一輪 */ }
+    }, 5000);
+  }
+
   return {
     setBars,
     setIndicators: applyIndicators,
-    destroy() { ro.disconnect(); main.remove(); sub.remove(); },
+    destroy() { dead = true; clearInterval(cdTimer); clearInterval(liveTimer); if (cdEl) cdEl.remove(); ro.disconnect(); main.remove(); sub.remove(); },
     mainChart: main,
   };
 }

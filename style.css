@@ -590,3 +590,13 @@ body[data-route="search"] .ticker { display: none; }
 .rng-seg button { background: none; border: 0; color: #9aa2ad; font-size: 12.5px; padding: 5px 10px; border-radius: 8px; cursor: pointer; }
 .rng-seg button.on { background: #2a3038; color: #fff; font-weight: 700; }
 .xcard.kfs .rng-lbl { display: none; }
+
+/* ── 專業化 K 線工具列 ── */
+.per-seg { display: inline-flex; background: #12161b; border: 1px solid rgba(255,255,255,.08); border-radius: 10px; padding: 2px; flex: 0 1 auto; overflow-x: auto; scrollbar-width: none; }
+.per-seg::-webkit-scrollbar { display: none; }
+.per-seg button { background: none; border: 0; color: #9aa2ad; font-size: 12.5px; font-weight: 600; padding: 5px 9px; border-radius: 8px; cursor: pointer; white-space: nowrap; font-family: var(--mono); }
+.per-seg button.on { background: #2a3038; color: #f0cf8e; }
+.lwc-cd { position: absolute; right: 0; z-index: 3; pointer-events: none; text-align: center; font: 600 12px/18px var(--mono, monospace); color: #fff; border-radius: 3px; padding: 0 2px; box-sizing: border-box; }
+#stk-ind-row .chip2 { min-height: 26px; padding: 3px 11px; font-size: 12px; font-family: var(--mono); }
+#stk-ind-row .chip2:not(.on) { background: transparent; border-color: rgba(255,255,255,.10); color: #7c838c; }
+.xcard .legend { gap: 12px; font-size: 11.5px; opacity: .9; }

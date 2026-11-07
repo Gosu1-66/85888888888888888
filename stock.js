@@ -133,8 +133,10 @@ export function viewStock() {
   const canIntraday = u.market === "加密貨幣" ? true : u.market === "美股" ? cs.length >= 60 : false;
   const period = canIntraday ? stkPeriod() : "1d";
   const isDaily = period === "1d";
-  const periodChips = PERIODS.filter(([p]) => p === "1d" || canIntraday)
-    .map(([p, l]) => `<button class="chip2${p === period ? " on" : ""}" data-act="stk-period" data-period="${p}">${l}</button>`).join("");
+  // 沒有分時資料的商品（例如台股）只有日線，不顯示單一個「日線」按鈕
+  const periodChips = canIntraday
+    ? `<span class="per-seg">${PERIODS.map(([p, l]) => `<button class="${p === period ? "on" : ""}" data-act="stk-period" data-period="${p}">${l}</button>`).join("")}</span>`
+    : "";
   const useTv = !isDaily && canIntraday && u.market !== "加密貨幣";
   // TradingView 有資料的商品（美股／加密貨幣）才給「完整圖表」入口；台股免費嵌入無分時資料，不顯示
   const canTv = u.market === "美股" || u.market === "加密貨幣";
@@ -149,7 +151,6 @@ export function viewStock() {
       <span style="flex:1"></span>
       ${fs ? `<button class="chip2 kfs-exit" data-act="stk-fs-exit">✕ 退出全螢幕</button>` : `<button class="chip2" data-act="stk-fs" title="全螢幕（自動橫向）">⤢ 全螢幕</button>`}
       ${canTv ? `<button class="chip2 gold" data-act="stk-full" data-key="${esc(key)}" title="用 TradingView 完整圖表查看">完整圖表 ›</button>` : ""}
-      <span class="chip2" style="pointer-events:none" id="stk-bars">${isDaily ? `${Math.min(cs.length, rng)} / ${cs.length} 根` : ""}</span>
     </div>
     <div class="chiprow" id="stk-range-row" style="margin:0 0 6px${isDaily && !useTv && !fs ? "" : ";display:none"}">${rangeChips}</div>
     <div class="chiprow" id="stk-ind-row" style="margin:0 0 8px${useTv || fs ? ";display:none" : ""}">${indChips}</div>
@@ -157,7 +158,7 @@ export function viewStock() {
     <div id="stk-tv" class="tv-host" style="display:none"></div>
     <div id="stk-main" class="lwc-main"></div>
     <div id="stk-sub" class="lwc-sub"></div>
-    <div class="legend" id="stk-legend"><span><i style="background:var(--warn)"></i>MA5</span><span><i style="background:var(--blue)"></i>MA20</span><span><i style="background:var(--pink)"></i>MA60</span><span>成交量・RSI・MACD</span><span class="muted">拖曳平移・滾輪縮放・雙指縮放</span></div>
+    <div class="legend" id="stk-legend"><span><i style="background:var(--warn)"></i>MA5</span><span><i style="background:var(--blue)"></i>MA20</span><span><i style="background:var(--pink)"></i>MA60</span></div>
   </section>` : "";
 
   const tabs = avail.length > 1 ? `<div class="tabbar">${avail.map((t) => `<button type="button" class="${t === tab ? "on" : ""}" data-act="stock-tab" data-tab="${t}">${t}</button>`).join("")}</div>` : "";
@@ -389,8 +390,6 @@ export function afterStock() {
       tvEl.style.height = fsl ? fsl.avail + "px" : "";
       if (need || fsl) mountTv(tvEl, sym, TV_INTERVAL[effPeriod]);
     }
-    const barsEl = $("#stk-bars");
-    if (barsEl) barsEl.textContent = `${PERIODS.find(([p]) => p === effPeriod)[1]} · TradingView`;
     return;
   }
 
@@ -399,32 +398,50 @@ export function afterStock() {
   mainEl.style.display = "";
   subEl.style.display = "";
   if (legend) legend.style.display = "";
-  const barsEl = $("#stk-bars");
-  if (barsEl) barsEl.textContent = isDaily ? `${Math.min(cs.length, range)} / ${cs.length} 根` : "";
 
   // 加密貨幣分時：Binance klines 前端直取，一樣畫在自己的 Lightweight Charts
   // 日線本機資料不足（例如手機拿到舊快取的 prices.json）時，加密貨幣也改抓 Binance 日 K，避免「0 根」空圖
-  if (u.market === "加密貨幣" && (!isDaily || cs.length < 60)) {
-    clearLwc();
+  if (u.market === "加密貨幣") {
     const ind = stkInd();
+    // 同一檔、同一週期重繪（例如報價更新）時沿用現有圖表，不重抓、不閃爍
+    if (klineState && klineState.key === key && klineState.period === effPeriod && klineState.el === mainEl && mainEl.isConnected && klineState.fs === !!fsl && klineState.chart) {
+      if (isDaily) klineState.chart.setBars(range);
+      klineState.chart.setIndicators(ind);
+      return;
+    }
+    clearLwc();
     const seq = ++binanceSeq;
-    if (box) box.textContent = "分時 K 線載入中…";
-    loadBinanceCandles(u.symbol, effPeriod, 400).then((rows) => {
+    if (box) box.textContent = "K 線載入中…";
+    const SEC = { "1m": 60, "5m": 300, "15m": 900, "1h": 3600, "4h": 14400, "8h": 28800, "1d": 86400 }[effPeriod] || 86400;
+    loadBinanceCandles(u.symbol, effPeriod, 400).catch(() => null).then((fetched) => {
       if (seq !== binanceSeq || !mainEl.isConnected) return;
-      if (!rows || !rows.length) { if (box) box.innerHTML = '此週期暫時抓不到 K 線，<a href="javascript:location.reload()">重新載入</a>'; return; }
+      let rows = fetched && fetched.length ? fetched : null;
+      const live = !!rows;
+      if (!rows && isDaily && cs.length >= 60) rows = cs.slice();    // Binance 抓不到時，日線退回網站自己的資料
+      if (!rows) { if (box) box.innerHTML = '此週期暫時抓不到 K 線，<a href="javascript:location.reload()">重新載入</a>'; return; }
       const chart = mountCandle(mainEl, subEl, rows, {
         range: isDaily ? Math.min(rows.length, range) : rows.length, mainHeight: mainH, subHeight: subH, intraday: !isDaily, indicators: ind, rotated,
+        countdownSec: live ? SEC : 0,
+        liveFetch: live ? () => loadBinanceCandles(u.symbol, effPeriod, 2) : null,
+        onLive: (nr) => {
+          for (const r of nr) {
+            const i = rows.findIndex((c) => c.t === r.t);
+            if (i >= 0) rows[i] = r; else if (r.t > rows[rows.length - 1].t) rows.push(r);
+          }
+          const cur = $("#stk-ohlc");
+          if (cur && !cur.dataset.hover) cur.innerHTML = ohlcText(rows[rows.length - 1], rows[rows.length - 2]);
+        },
         onHover: (d, time) => {
           if (!box) return;
-          if (!d || !time) { box.innerHTML = ohlcText(rows[rows.length - 1], rows[rows.length - 2]); return; }
+          if (!d || !time) { delete box.dataset.hover; box.innerHTML = ohlcText(rows[rows.length - 1], rows[rows.length - 2]); return; }
+          box.dataset.hover = "1";
           const raw = rows.find((c) => c.t === time);
           box.innerHTML = ohlcText(raw || { t: time, o: d.open, h: d.high, l: d.low, c: d.close, v: 0 }, rows[rows.length - 2]);
         },
       });
-      klineState = { key, range, chart, el: mainEl, period: effPeriod };
+      klineState = { key, range, chart, el: mainEl, period: effPeriod, fs: !!fsl };
       if (box) box.innerHTML = ohlcText(rows[rows.length - 1], rows[rows.length - 2]);
-      if (barsEl) barsEl.textContent = `${rows.length} 根 · ${PERIODS.find(([p]) => p === effPeriod)[1]}`;
-    }).catch(() => { if (box) box.innerHTML = '此週期暫時抓不到 K 線，<a href="javascript:location.reload()">重新載入</a>'; });
+    });
     return;
   }
 
