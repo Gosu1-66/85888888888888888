@@ -386,15 +386,17 @@ export function afterStock() {
   if (barsEl) barsEl.textContent = isDaily ? `${cs.length} 根` : "";
 
   // 加密貨幣分時：Binance klines 前端直取，一樣畫在自己的 Lightweight Charts
-  if (!isDaily && u.market === "加密貨幣") {
+  // 日線本機資料不足（例如手機拿到舊快取的 prices.json）時，加密貨幣也改抓 Binance 日 K，避免「0 根」空圖
+  if (u.market === "加密貨幣" && (!isDaily || cs.length < 60)) {
     clearLwc();
     const ind = stkInd();
     const seq = ++binanceSeq;
     if (box) box.textContent = "分時 K 線載入中…";
     loadBinanceCandles(u.symbol, effPeriod, 400).then((rows) => {
-      if (seq !== binanceSeq || !mainEl.isConnected || !rows || !rows.length) return;
+      if (seq !== binanceSeq || !mainEl.isConnected) return;
+      if (!rows || !rows.length) { if (box) box.innerHTML = '此週期暫時抓不到 K 線，<a href="javascript:location.reload()">重新載入</a>'; return; }
       const chart = mountCandle(mainEl, subEl, rows, {
-        range: rows.length, mainHeight: narrow ? 232 : 320, subHeight: narrow ? 138 : 132, intraday: true, indicators: ind,
+        range: isDaily ? Math.min(rows.length, range) : rows.length, mainHeight: narrow ? 232 : 320, subHeight: narrow ? 138 : 132, intraday: !isDaily, indicators: ind,
         onHover: (d, time) => {
           if (!box) return;
           if (!d || !time) { box.innerHTML = ohlcText(rows[rows.length - 1], rows[rows.length - 2]); return; }
@@ -405,7 +407,7 @@ export function afterStock() {
       klineState = { key, range, chart, el: mainEl, period: effPeriod };
       if (box) box.innerHTML = ohlcText(rows[rows.length - 1], rows[rows.length - 2]);
       if (barsEl) barsEl.textContent = `${rows.length} 根 · ${PERIODS.find(([p]) => p === effPeriod)[1]}`;
-    }).catch(() => { if (box) box.textContent = "此標的暫無分時 K 線。"; });
+    }).catch(() => { if (box) box.innerHTML = '此週期暫時抓不到 K 線，<a href="javascript:location.reload()">重新載入</a>'; });
     return;
   }
 

@@ -15,6 +15,17 @@ export function chartColors() {
   return { up, down };
 }
 
+// 時間可能是 unix 秒、"YYYY-MM-DD" 字串或 {year,month,day}；不用 new Date("YYYY-MM-DD HH:mm")（Safari 會 Invalid Date）
+function toDate(t) {
+  let d = null;
+  if (typeof t === "number") d = new Date(t * 1000);
+  else if (typeof t === "string") {
+    const m = t.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    d = m ? new Date(+m[1], +m[2] - 1, +m[3]) : new Date(t);
+  } else if (t && typeof t === "object" && t.year) d = new Date(t.year, t.month - 1, t.day);
+  return d && !isNaN(d.getTime()) ? d : null;
+}
+
 function baseOptions(width, height, opts = {}) {
   return {
     width,
@@ -41,12 +52,14 @@ function baseOptions(width, height, opts = {}) {
       fixLeftEdge: false,
       timeVisible: false,
       secondsVisible: false,
-      tickMarkFormatter: (t) => {
-        const d = typeof t === "number" ? new Date(t * 1000) : new Date(t);
-        if (isNaN(d.getTime())) return "";
-        return opts.intraday
-          ? `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`
-          : `${d.getMonth() + 1}/${d.getDate()}`;
+      // tickMarkType：0 年、1 月、2 日、3 時間。分時遇到換日顯示「月/日」，其餘顯示「時:分」，避免整排都是 08:00
+      tickMarkFormatter: (t, type) => {
+        const d = toDate(t);
+        if (!d) return "";
+        const md = `${d.getMonth() + 1}/${d.getDate()}`;
+        if (type === 0) return String(d.getFullYear());
+        if (!opts.intraday || type <= 2) return md;
+        return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
       },
     },
     crosshair: {
@@ -56,7 +69,15 @@ function baseOptions(width, height, opts = {}) {
     },
     handleScroll: { mouseWheel: true, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: false },
     handleScale: { axisPressedMouseMove: true, mouseWheel: true, pinch: true },
-    localization: { locale: "zh-TW" },
+    localization: {
+      locale: "zh-TW",
+      timeFormatter: (t) => {
+        const d = toDate(t);
+        if (!d) return "";
+        const md = `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`;
+        return opts.intraday ? `${md} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}` : md;
+      },
+    },
     watermark: { visible: false },
   };
 }
@@ -192,6 +213,17 @@ export function mountCandle(mainEl, subEl, candles, opts = {}) {
     vol.applyOptions({ visible: indState.vol });
     rsiSeries.applyOptions({ visible: indState.rsi });
     for (const s of [difSeries, deaSeries, histSeries]) s.applyOptions({ visible: indState.macd });
+    // 副圖：RSI 與 MACD 都關掉就整塊隱藏，不留空白框；只開一個就讓它佔滿副圖
+    const anySub = indState.rsi || indState.macd;
+    subEl.style.display = anySub ? "" : "none";
+    if (indState.rsi && indState.macd) {
+      sub.priceScale("rsi").applyOptions({ scaleMargins: { top: 0.02, bottom: 0.5 } });
+      sub.priceScale("macd").applyOptions({ scaleMargins: { top: 0.52, bottom: 0.02 } });
+    } else {
+      sub.priceScale("rsi").applyOptions({ scaleMargins: { top: 0.04, bottom: 0.04 } });
+      sub.priceScale("macd").applyOptions({ scaleMargins: { top: 0.04, bottom: 0.04 } });
+    }
+    if (anySub) requestAnimationFrame(() => kick(true));
   };
   applyIndicators();
 
