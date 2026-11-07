@@ -362,7 +362,7 @@ main { padding: 8px 12px calc(var(--nav-h) + 26px + env(safe-area-inset-bottom))
 .barline > i { display: block; height: 100%; border-radius: 3px; background: linear-gradient(90deg,#c9a259,#f0cf8e); }
 
 /* 底部導覽（4 頁，參考 App 版） */
-nav.bottom-nav { grid-template-columns: repeat(4, 1fr); background: rgba(12,13,15,.96); backdrop-filter: blur(14px); border-top: 1px solid rgba(255,255,255,.07); height: auto; }
+nav.bottom-nav { grid-template-columns: repeat(3, 1fr); background: rgba(12,13,15,.96); backdrop-filter: blur(14px); border-top: 1px solid rgba(255,255,255,.07); height: auto; }
 .nav-btn { flex-direction: column; gap: 3px; font-size: 10.5px; min-height: 56px; padding-top: 6px; }
 .nav-btn .ni { font-size: 18px; line-height: 1; }
 .nav-btn.active { color: var(--gold2); }
@@ -628,3 +628,12 @@ body[data-route="search"] .ticker { display: none; }
 .ncard .nt { font-size:14.5px; font-weight:700; line-height:1.5; color:#eceef2; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
 .ncard .nm2 { font-size:11.5px; color:#8b93a1; margin-top:8px; display:flex; gap:4px; }
 .ncard .ncnt { margin-left:auto; }
+
+/* ── 版面細修：間距一致、標題不折行、三分頁導覽 ── */
+.grid > .card { margin-bottom: 0; }
+.grid.g2 { margin-bottom: 12px; }
+body[data-route="market"] #app, body[data-route="profile"] #app, body[data-route="news"] #app { padding-top: 12px; }
+.sec-h .tt { white-space: nowrap; }
+.sec-h .meta { white-space: nowrap; font-size: 11px; }
+h1 { margin: 4px 0 12px; }
+.grid.g2 > :last-child:nth-child(odd) { grid-column: 1 / -1; }
