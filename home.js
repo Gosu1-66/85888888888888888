@@ -45,7 +45,7 @@ function aiCard() {
       <p class="ai-body">市場指數與法人資料由 GitHub 排程於盤後更新，稍後會自動補上。</p>
       <div class="ai-foot">整合指數、法人與類股資金流向</div></section>`;
   }
-  const idx = indices().find((i) => i.code === "t00");
+  const idx = indices().find((i) => String(i.code).split(".")[0] === "t00");
   const best = inds.slice().sort((a, c) => (c.totalNet || 0) - (a.totalNet || 0));
   const strong = best[0], weak = best[best.length - 1];
   const dir = t.score >= 2 ? "盤中走強" : t.score <= -2 ? "盤中重挫" : "盤中震盪";
@@ -67,8 +67,8 @@ function aiCard() {
     </div>
     <h1 class="ai-title">${title}</h1>
     <p class="ai-body">${body}</p>
-    <div class="ai-chips"><span class="ai-chip">加權指數</span><span class="ai-chip">台指期</span><span class="ai-chip">外資</span></div>
-    <div class="ai-foot"><span>整合指數、法人與類股資金流向</span><span class="sp"></span><span style="color:var(--gold)">AI ›</span></div>
+    <div class="ai-chips"><span class="ai-chip" data-act="goto" data-href="#/indexv/t00">加權指數</span><span class="ai-chip" data-act="goto" data-href="#/market">台指期</span><span class="ai-chip" data-act="goto" data-href="#/inst">外資</span></div>
+    <div class="ai-foot"><span>整合指數、法人與類股資金流向</span><span class="sp"></span><span style="color:var(--gold)">看為什麼 ›</span></div>
   </section>`;
 }
 

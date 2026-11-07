@@ -69,7 +69,7 @@ export const indexCandles = () => candleRows(keyOf("指數", "^TWII"));
 /* ── 盤後整理：偏多／偏空（規則式計分） ── */
 export function marketTone() {
   const inst = institutions(), b = breadth();
-  const idx = indices().find((i) => i.code === "t00");
+  const idx = indices().find((i) => String(i.code).split(".")[0] === "t00");
   if (!inst && !b && !idx) return null;
   let score = 0; const parts = [];
   if (idx) {

@@ -1,5 +1,5 @@
 // sw.js — Service Worker：程式碼/資料採網路優先（部署即時生效），圖片等資源快取優先；離線時回快取殼。
-const VERSION = "gosu-v3-40";
+const VERSION = "gosu-v3-41";
 const SHELL = [
   "./",
   "index.html",
@@ -7,7 +7,7 @@ const SHELL = [
   "ui.js", "state.js", "portfolio.js", "catalog.js",
   "quotes.js", "marketdata.js",
   "charts.js", "indicators.js", "analysis.js",
-  "app.js", "home.js", "stock.js", "analysisview.js", "search.js", "portfolios.js", "profile.js", "cloud.js", "tools.js", "indexview.js", "kline.js", "lightweight-charts.js", "companies.js", "news.js",
+  "app.js", "home.js", "stock.js", "analysisview.js", "search.js", "portfolios.js", "profile.js", "cloud.js", "tools.js", "indexview.js", "kline.js", "lightweight-charts.js", "companies.js", "news.js", "marketview.js",
   "manifest.webmanifest",
   "icon-180.png", "icon-192.png", "icon-512.png",
 ];
