@@ -3,6 +3,33 @@
 
 const LWC = () => window.LightweightCharts || null;
 
+// 全螢幕旋轉時，Chromium 回報的 device-pixel-content-box 會依旋轉後的外框計算，造成畫布被拉伸。
+// 進入全螢幕（body.kfs-open）期間讓 LWC 偵測不到這個能力，改走 clientSize × devicePixelRatio，旋轉後也不變形。
+(function patchRO() {
+  const RO = window.ResizeObserver;
+  if (!RO || RO.__gu1) return;
+  const strip = (e) => ({ target: e.target, contentRect: e.contentRect, contentBoxSize: e.contentBoxSize, borderBoxSize: e.borderBoxSize });
+  class PatchedRO extends RO {
+    constructor(cb) {
+      super((entries, obs) => cb(document.body && document.body.classList.contains("kfs-open") ? entries.map(strip) : entries, obs));
+    }
+  }
+  PatchedRO.__gu1 = true;
+  window.ResizeObserver = PatchedRO;
+  // 沒有 device-pixel-content-box 時（iPhone Safari 本來就沒有），LWC 用 canvas.getClientRects() 算點陣大小；
+  // 旋轉後那是轉過的外框（寬高對調），所以旋轉容器內的畫布改回未旋轉的 client 尺寸。
+  const CP = window.HTMLCanvasElement && HTMLCanvasElement.prototype;
+  if (CP && CP.getClientRects) {
+    const orig = CP.getClientRects;
+    CP.getClientRects = function () {
+      if (document.body && document.body.classList.contains("kfs-open") && this.closest && this.closest(".kfs.rot")) {
+        return [{ left: 0, top: 0, width: this.clientWidth, height: this.clientHeight }];
+      }
+      return orig.call(this);
+    };
+  }
+})();
+
 function cssVar(name, fallback) {
   const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
   return v || fallback;
@@ -227,6 +254,10 @@ export function mountCandle(mainEl, subEl, candles, opts = {}) {
   };
   applyIndicators();
 
+  // 全螢幕「CSS 旋轉 90°」模式（iPhone 不能鎖橫向）：LWC 內建拖曳／十字線用的是螢幕座標，旋轉後方向會錯，
+  // 所以關掉內建手勢，改由這裡把手指座標換算回圖表座標，自己做平移、雙指縮放、按住看十字線。
+  if (opts.rotated) attachRotatedGestures(mainEl, subEl, main, sub, candle);
+
   const ro = new ResizeObserver(() => {
     const w1 = mainEl.clientWidth;
     if (w1 > 0) main.resize(w1, hMain);
@@ -248,6 +279,72 @@ export function mountCandle(mainEl, subEl, candles, opts = {}) {
     destroy() { ro.disconnect(); main.remove(); sub.remove(); },
     mainChart: main,
   };
+}
+
+/* ── 旋轉 90°（順時針）時的觸控換算 ──
+   元素本地 x 軸 → 螢幕往下（+clientY），本地 y 軸 → 螢幕往左（-clientX）。 */
+function attachRotatedGestures(mainEl, subEl, main, sub, candle) {
+  for (const c of [main, sub]) c.applyOptions({ handleScroll: false, handleScale: false });
+  const local = (el, t) => { const r = el.getBoundingClientRect(); return { x: t.clientY - r.top, y: r.right - t.clientX }; };
+  let mode = null, lastX = 0, startDist = 0, startRange = null, holdTimer = 0, moved = false;
+  const ts = main.timeScale();
+  const shift = (dxPx) => {
+    const r = ts.getVisibleLogicalRange(); if (!r) return;
+    const bs = ts.options().barSpacing || 6;
+    const d = dxPx / bs;
+    ts.setVisibleLogicalRange({ from: r.from - d, to: r.to - d });
+  };
+  const cross = (el, t) => {
+    if (el !== mainEl) return;
+    const p = local(el, t);
+    const time = ts.coordinateToTime(p.x);
+    const price = candle.coordinateToPrice(p.y);
+    if (time != null && price != null && main.setCrosshairPosition) main.setCrosshairPosition(price, time, candle);
+  };
+  const onStart = (el) => (e) => {
+    e.preventDefault();
+    const t = e.touches;
+    moved = false;
+    clearTimeout(holdTimer);
+    if (t.length >= 2) {
+      mode = "pinch";
+      startDist = Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY) || 1;
+      startRange = ts.getVisibleLogicalRange();
+    } else {
+      mode = "pan";
+      lastX = local(el, t[0]).x;
+      holdTimer = setTimeout(() => { if (!moved) { mode = "cross"; cross(el, t[0]); } }, 350);
+    }
+  };
+  const onMove = (el) => (e) => {
+    e.preventDefault();
+    const t = e.touches;
+    if (mode === "pinch" && t.length >= 2 && startRange) {
+      const d = Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY) || 1;
+      const k = startDist / d;
+      const mid = (startRange.from + startRange.to) / 2;
+      const half = Math.max(5, Math.min(2000, ((startRange.to - startRange.from) / 2) * k));
+      ts.setVisibleLogicalRange({ from: mid - half, to: mid + half });
+    } else if (mode === "cross") {
+      cross(el, t[0]);
+    } else if (mode === "pan" && t.length) {
+      const x = local(el, t[0]).x;
+      if (Math.abs(x - lastX) > 2) { moved = true; clearTimeout(holdTimer); }
+      shift(x - lastX);
+      lastX = x;
+    }
+  };
+  const onEnd = () => {
+    clearTimeout(holdTimer);
+    if (mode === "cross" && main.clearCrosshairPosition) main.clearCrosshairPosition();
+    mode = null;
+  };
+  for (const el of [mainEl, subEl]) {
+    el.addEventListener("touchstart", onStart(el), { passive: false });
+    el.addEventListener("touchmove", onMove(el), { passive: false });
+    el.addEventListener("touchend", onEnd);
+    el.addEventListener("touchcancel", onEnd);
+  }
 }
 
 /* ── 指數折線（無 K 線資料時） ── */

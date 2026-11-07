@@ -139,15 +139,17 @@ export function viewStock() {
   const indChips = INDS.map(([k, l]) => `<button class="chip2${inds[k] !== false ? " on" : ""}" data-act="stk-ind" data-ind="${k}">${l}</button>`).join("");
   const hasChart = cs.length >= 5 || u.market === "加密貨幣";
 
-  const kline = hasChart ? `<section class="xcard" style="padding:12px 12px 8px">
+  const fs = !!S.stkFs;
+  const kline = hasChart ? `<section class="xcard${fs ? " kfs" : ""}" id="stk-kcard" style="padding:12px 12px 8px">
     <div class="chiprow" style="margin:0 0 6px">
-      ${periodChips}
+      ${periodChips}${fs ? `<span class="kfs-sep"></span>${isDaily && !useTv ? rangeChips : ""}${useTv ? "" : `<span class="kfs-sep"></span>${indChips}`}` : ""}
       <span style="flex:1"></span>
+      ${fs ? `<button class="chip2 kfs-exit" data-act="stk-fs-exit">✕ 退出全螢幕</button>` : `<button class="chip2" data-act="stk-fs" title="全螢幕（自動橫向）">⤢ 全螢幕</button>`}
       ${canTv ? `<button class="chip2 gold" data-act="stk-full" data-key="${esc(key)}" title="用 TradingView 完整圖表查看">完整圖表 ›</button>` : ""}
       <span class="chip2" style="pointer-events:none" id="stk-bars">${isDaily ? `${cs.length} 根` : ""}</span>
     </div>
-    <div class="chiprow" id="stk-range-row" style="margin:0 0 6px${isDaily && !useTv ? "" : ";display:none"}">${rangeChips}</div>
-    <div class="chiprow" id="stk-ind-row" style="margin:0 0 8px${useTv ? ";display:none" : ""}">${indChips}</div>
+    <div class="chiprow" id="stk-range-row" style="margin:0 0 6px${isDaily && !useTv && !fs ? "" : ";display:none"}">${rangeChips}</div>
+    <div class="chiprow" id="stk-ind-row" style="margin:0 0 8px${useTv || fs ? ";display:none" : ""}">${indChips}</div>
     <div class="lwc-ohlc" id="stk-ohlc"></div>
     <div id="stk-tv" class="tv-host" style="display:none"></div>
     <div id="stk-main" class="lwc-main"></div>
@@ -283,12 +285,14 @@ function panel(u, key, tab, sc, q, chgPct, fund, hasFund) {
 let klineState = null;
 
 function pad(n) { return String(n).padStart(2, "0"); }
+let ohlcIntraday = false;
 function ohlcText(c, prev) {
   if (!c) return "";
   const d = new Date(c.t * 1000);
   const chg = prev ? c.c - prev.c : null;
   const pc = prev && prev.c ? (chg / prev.c) * 100 : null;
-  return `<b>${d.getFullYear()}/${pad(d.getMonth() + 1)}/${pad(d.getDate())}</b>
+  const hm = ohlcIntraday ? ` ${pad(d.getHours())}:${pad(d.getMinutes())}` : "";
+  return `<b>${d.getFullYear()}/${pad(d.getMonth() + 1)}/${pad(d.getDate())}${hm}</b>
     <span>開 ${fmt(c.o, 2)}</span><span>高 ${fmt(c.h, 2)}</span><span>低 ${fmt(c.l, 2)}</span>
     <span class="${tone(chg)}">收 ${fmt(c.c, 2)}</span>
     <span class="${tone(chg)}">${pc == null ? "" : (pc >= 0 ? "+" : "") + pc.toFixed(2) + "%"}</span>
@@ -350,7 +354,16 @@ export function afterStock() {
   const effPeriod = canIntraday ? period : "1d";
   const isDaily = effPeriod === "1d";
   const range = Number(S.stkRange) || 126;
+  const fsl = applyFs($("#stk-kcard"), mainEl);
   const narrow = (mainEl.clientWidth || window.innerWidth) < 520;
+  // 全螢幕時主圖／副圖高度依可用空間計算；一般模式維持原本高度
+  const ind0 = stkInd();
+  const subOn = ind0.rsi !== false || ind0.macd !== false;
+  const H = fsl ? { main: Math.round(subOn ? fsl.avail * 0.7 : fsl.avail), sub: Math.max(60, Math.round(fsl.avail * 0.3) - 6) } : null;
+  const mainH = H ? H.main : (narrow ? 232 : 320);
+  const subH = H ? H.sub : (narrow ? 138 : 132);
+  const rotated = !!(fsl && fsl.rot);
+  ohlcIntraday = !isDaily;
 
   const clearLwc = () => {
     if (klineState) { try { klineState.chart && klineState.chart.destroy(); } catch (e) { /* ignore */ } klineState = null; }
@@ -370,7 +383,8 @@ export function afterStock() {
       // 頁面重繪會換掉容器元素，因此只要容器不是同一個（或尚未掛過）就重掛 widget
       const need = !tvState || tvState.el !== tvEl || tvState.sym !== sym
         || tvState.interval !== TV_INTERVAL[effPeriod] || !tvEl.querySelector("script");
-      if (need) mountTv(tvEl, sym, TV_INTERVAL[effPeriod]);
+      tvEl.style.height = fsl ? fsl.avail + "px" : "";
+      if (need || fsl) mountTv(tvEl, sym, TV_INTERVAL[effPeriod]);
     }
     const barsEl = $("#stk-bars");
     if (barsEl) barsEl.textContent = `${PERIODS.find(([p]) => p === effPeriod)[1]} · TradingView`;
@@ -396,7 +410,7 @@ export function afterStock() {
       if (seq !== binanceSeq || !mainEl.isConnected) return;
       if (!rows || !rows.length) { if (box) box.innerHTML = '此週期暫時抓不到 K 線，<a href="javascript:location.reload()">重新載入</a>'; return; }
       const chart = mountCandle(mainEl, subEl, rows, {
-        range: isDaily ? Math.min(rows.length, range) : rows.length, mainHeight: narrow ? 232 : 320, subHeight: narrow ? 138 : 132, intraday: !isDaily, indicators: ind,
+        range: isDaily ? Math.min(rows.length, range) : rows.length, mainHeight: mainH, subHeight: subH, intraday: !isDaily, indicators: ind, rotated,
         onHover: (d, time) => {
           if (!box) return;
           if (!d || !time) { box.innerHTML = ohlcText(rows[rows.length - 1], rows[rows.length - 2]); return; }
@@ -415,7 +429,7 @@ export function afterStock() {
   if (!mainEl || !subEl || cs.length < 5) return;
   if (box) box.innerHTML = ohlcText(cs[cs.length - 1], cs[cs.length - 2]);
   const ind = stkInd();
-  if (klineState && klineState.key === key && klineState.el === mainEl && mainEl.isConnected) {
+  if (klineState && klineState.key === key && klineState.el === mainEl && mainEl.isConnected && klineState.fs === !!fsl) {
     klineState.range = range;
     if (klineState.chart) { klineState.chart.setBars(range); klineState.chart.setIndicators(ind); }
     return;
@@ -427,9 +441,10 @@ export function afterStock() {
   }
   const chart = mountCandle(mainEl, subEl, cs, {
     range,
-    mainHeight: narrow ? 232 : 320,
-    subHeight: narrow ? 138 : 132,
+    mainHeight: mainH,
+    subHeight: subH,
     indicators: ind,
+    rotated,
     onHover: (d, time) => {
       if (!box) return;
       if (!d || !time) { box.innerHTML = ohlcText(cs[cs.length - 1], cs[cs.length - 2]); return; }
@@ -437,7 +452,7 @@ export function afterStock() {
       box.innerHTML = ohlcText(raw || { t: time, o: d.open, h: d.high, l: d.low, c: d.close, v: 0 }, cs[cs.length - 2]);
     },
   });
-  klineState = { key, range, chart, el: mainEl, period: effPeriod };
+  klineState = { key, range, chart, el: mainEl, period: effPeriod, fs: !!fsl };
 }
 /* ── actions ── */
 registerAction("stk-range", (el) => {
@@ -462,6 +477,62 @@ registerAction("stk-ind", (el) => {
   el.classList.toggle("on", next[k] !== false);
   if (klineState && klineState.chart) klineState.chart.setIndicators(next);
 });
+
+/* ── 全螢幕（自動橫向） ──
+   Android／桌機：真正的 Fullscreen API + 鎖橫向；iPhone（Safari 與主畫面 PWA 都不支援鎖方向）：
+   手機直拿時把圖表容器用 CSS 旋轉 90° 鋪滿，看起來就是橫向；使用者自己轉橫就直接鋪滿不旋轉。 */
+let fsBound = false;
+function applyFs(card, mainEl) {
+  document.body.classList.toggle("kfs-open", !!(card && card.classList.contains("kfs")));
+  if (!card || !card.classList.contains("kfs")) return null;
+  const vw = window.visualViewport ? Math.round(window.visualViewport.width) : window.innerWidth;
+  const vh = window.visualViewport ? Math.round(window.visualViewport.height) : window.innerHeight;
+  const rot = vh > vw;
+  card.classList.toggle("rot", rot);
+  card.style.width = (rot ? vh : vw) + "px";
+  card.style.height = (rot ? vw : vh) + "px";
+  const top = mainEl ? mainEl.offsetTop : 120;
+  const legend = card.querySelector(".legend");
+  const legendH = legend && legend.style.display !== "none" ? legend.offsetHeight + 6 : 0;
+  const avail = Math.max(160, (rot ? vw : vh) - top - legendH - 18);
+  if (!fsBound) {
+    fsBound = true;
+    let tmr = 0;
+    const re = () => { clearTimeout(tmr); tmr = setTimeout(() => { if (S.stkFs) window.dispatchEvent(new CustomEvent("portfolios:changed")); }, 180); };
+    window.addEventListener("resize", re);
+    window.addEventListener("orientationchange", re);
+    window.addEventListener("popstate", () => { if (S.stkFs) exitFs(true); });
+    document.addEventListener("fullscreenchange", () => { if (!document.fullscreenElement && S.stkFs && fsReal) exitFs(false); });
+  }
+  return { rot, avail };
+}
+let fsReal = false;
+function exitFs(fromBack) {
+  S.stkFs = false;
+  document.body.classList.remove("kfs-open");
+  if (fsReal) {
+    fsReal = false;
+    try { screen.orientation && screen.orientation.unlock && screen.orientation.unlock(); } catch (e) { /* ignore */ }
+    if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => {});
+  }
+  if (!fromBack && history.state && history.state.kfs) { history.back(); }
+  window.dispatchEvent(new CustomEvent("portfolios:changed"));
+}
+registerAction("stk-fs", () => {
+  S.stkFs = true;
+  try { history.pushState({ kfs: 1 }, "", location.href); } catch (e) { /* ignore */ }
+  const de = document.documentElement;
+  if (de.requestFullscreen && !/iPhone|iPad|iPod/.test(navigator.userAgent)) {
+    de.requestFullscreen({ navigationUI: "hide" }).then(() => {
+      fsReal = true;
+      if (screen.orientation && screen.orientation.lock) return screen.orientation.lock("landscape").catch(() => {});
+    }).catch(() => {}).finally(() => window.dispatchEvent(new CustomEvent("portfolios:changed")));
+  }
+  window.dispatchEvent(new CustomEvent("portfolios:changed"));
+});
+registerAction("stk-fs-exit", () => exitFs(false));
+// 離開個股頁時一定退出全螢幕
+window.addEventListener("hashchange", () => { if (S.stkFs && !location.hash.startsWith("#/stock/")) exitFs(true); });
 
 /* 完整圖表：開 TradingView 進階圖表頁（美股／加密貨幣） */
 registerAction("stk-full", (el) => {

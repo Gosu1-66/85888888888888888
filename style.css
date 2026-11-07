@@ -530,3 +530,24 @@ canvas#stk-chart { border-radius: 10px; }
 .steps { margin: 8px 0 4px; padding-left: 20px; line-height: 1.9; }
 .steps li { margin-bottom: 4px; }
 .pwa-card .btn { margin-top: 8px; }
+/* ── K 線全螢幕（自動橫向） ── */
+body.kfs-open { overflow: hidden; }
+body.kfs-open nav.tabs, body.kfs-open .bottom-nav, body.kfs-open .ticker { visibility: hidden; }
+.xcard.kfs {
+  position: fixed; top: 0; left: 0; z-index: 10000; margin: 0; border-radius: 0; border: 0;
+  background: #0b1016; overflow: hidden; box-sizing: border-box;
+  padding: max(8px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) max(6px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left)) !important;
+}
+/* 直拿手機：容器寬=螢幕高、高=螢幕寬，從右上角順時針轉 90° 鋪滿 */
+.xcard.kfs.rot { left: 100%; transform-origin: top left; transform: rotate(90deg); padding: 8px max(10px, env(safe-area-inset-top)) 6px max(10px, env(safe-area-inset-bottom)) !important; }
+.xcard.kfs .chiprow { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+.xcard.kfs .chiprow::-webkit-scrollbar { display: none; }
+.xcard.kfs .chip2 { flex: 0 0 auto; min-height: 30px; padding: 5px 10px; font-size: 12px; }
+.xcard.kfs .lwc-main, .xcard.kfs .lwc-sub { touch-action: none; }
+.xcard.kfs .tv-host { border-radius: 6px; }
+.kfs-exit { border-color: rgba(229,72,77,.5) !important; color: #ff8f93 !important; }
+.kfs-sep { flex: 0 0 1px; align-self: stretch; margin: 4px 2px; background: rgba(255,255,255,.12); }
+.xcard.kfs .legend { display: none !important; }
+.xcard.kfs .lwc-ohlc { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 11px; margin-bottom: 2px; }
+.xcard.kfs .lwc-ohlc br { display: none; }
+.xcard.kfs #stk-main { min-height: 0; }
