@@ -78,7 +78,7 @@ function baseOptions(width, height, opts = {}) {
       barSpacing: 7,
       minBarSpacing: 1.5,
       fixLeftEdge: false,
-      timeVisible: false,
+      timeVisible: !!opts.intraday,   // 分時圖要開，LWC 才會把整點刻度標成「時間」類型
       secondsVisible: false,
       // tickMarkType：0 年、1 月、2 日、3 時間。分時遇到換日顯示「月/日」，其餘顯示「時:分」，避免整排都是 08:00
       tickMarkFormatter: (t, type) => {
