@@ -168,10 +168,19 @@ export function mountCandle(mainEl, subEl, candles, opts = {}) {
     mainEl.addEventListener("touchend", () => opts.onHover(null, null, null));
   }
 
+  const kick = (force) => {
+    if (!mainEl.isConnected) return;
+    const w1 = mainEl.clientWidth;
+    const w2 = subEl.clientWidth;
+    if (w1 > 0) main.resize(w1, hMain, !!force);
+    if (w2 > 0) sub.resize(w2, hSub, !!force);
+  };
+
   const setBars = (n) => {
     const total = bars.length;
     const cnt = Math.max(5, Math.min(total, n));
     main.timeScale().setVisibleLogicalRange({ from: total - cnt, to: total - 1 });
+    kick(true);
   };
   setBars(opts.range || 126);
 
@@ -188,12 +197,18 @@ export function mountCandle(mainEl, subEl, candles, opts = {}) {
 
   const ro = new ResizeObserver(() => {
     const w1 = mainEl.clientWidth;
-    if (w1 > 0) main.applyOptions({ width: w1 });
+    if (w1 > 0) main.resize(w1, hMain);
     const w2 = subEl.clientWidth;
-    if (w2 > 0) sub.applyOptions({ width: w2 });
+    if (w2 > 0) sub.resize(w2, hSub);
   });
   ro.observe(mainEl);
   ro.observe(subEl);
+
+  // 首次掛載時容器尺寸可能尚未穩定（clientWidth 為 0 後才變寬），LWC 有時不會自動重繪，
+  // 這裡再主動 resize 並強制重繪一次，避免圖表區只剩空白。
+  requestAnimationFrame(() => kick(false));
+  setTimeout(() => kick(true), 60);
+  setTimeout(() => kick(true), 220);
 
   return {
     setBars,
