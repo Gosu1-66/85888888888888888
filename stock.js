@@ -364,7 +364,10 @@ export function afterStock() {
     if (box) box.textContent = "";
     if (tvEl) {
       tvEl.style.display = "";
-      if (!tvState || tvState.sym !== sym || tvState.interval !== TV_INTERVAL[effPeriod]) mountTv(tvEl, sym, TV_INTERVAL[effPeriod]);
+      // 頁面重繪會換掉容器元素，因此只要容器不是同一個（或尚未掛過）就重掛 widget
+      const need = !tvState || tvState.el !== tvEl || tvState.sym !== sym
+        || tvState.interval !== TV_INTERVAL[effPeriod] || !tvEl.querySelector("script");
+      if (need) mountTv(tvEl, sym, TV_INTERVAL[effPeriod]);
     }
     const barsEl = $("#stk-bars");
     if (barsEl) barsEl.textContent = `${PERIODS.find(([p]) => p === effPeriod)[1]} · TradingView`;
