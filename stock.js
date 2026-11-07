@@ -514,9 +514,8 @@ export function afterTvChart() {
     allow_symbol_change: false,
     save_image: true,
     calendar: false,
-    details: true,
-    hotlist: false,
-    studies: ["Volume@tv-basicstudies", "MASimple@tv-basicstudies", "RSI@tv-basicstudies", "MACD@tv-basicstudies"],
+    details: false,
+    studies: ["Volume@tv-basicstudies"],
     support_host: "https://www.tradingview.com",
   });
   holder.appendChild(s);
