@@ -509,9 +509,9 @@ canvas#stk-chart { border-radius: 10px; }
 .tvfull { display: flex; flex-direction: column; gap: 8px; }
 .tvfull-head { display: flex; align-items: flex-start; gap: 10px; }
 .tvfull-head .nm { font-size: 17px; font-weight: 800; }
-.tvfull .tv-full { height: calc(100dvh - var(--nav-h) - 168px - env(safe-area-inset-top)) !important; min-height: 420px; }
+.tvfull .tv-full { height: min(calc(100dvh - var(--nav-h) - 168px - env(safe-area-inset-top)), 640px) !important; min-height: 420px; }
 @media (max-width: 520px) {
-  .tvfull .tv-full { height: calc(100dvh - var(--nav-h) - 176px - env(safe-area-inset-top)) !important; min-height: 360px; }
+  .tvfull .tv-full { height: min(calc(100dvh - var(--nav-h) - 176px - env(safe-area-inset-top)), 560px) !important; min-height: 360px; }
 }
 
 /* ── 更新提示條 ── */
