@@ -18,6 +18,31 @@ async function getJSON(url, ms = 8000) {
 
 export const binanceSymbol = (symbol) => `${symbol.toUpperCase()}USDT`;
 
+/** 取某週期的加密貨幣 K 線（前端直連 Binance）。interval: 1m/5m/15m/1h/4h/8h/1d */
+export async function loadBinanceCandles(symbol, interval = "1d", limit = 400) {
+  const rows = await binanceGet(`/api/v3/klines?symbol=${binanceSymbol(symbol)}&interval=${interval}&limit=${limit}`);
+  return rows.map((k) => ({ t: Math.floor(k[0] / 1000), o: +k[1], h: +k[2], l: +k[3], c: +k[4], v: +k[5] }));
+}
+
+/** TradingView 交易所代碼：台股上市 TWSE、上櫃 TPEX；美股依代號對映 */
+const NYSE_LIST = new Set(["TSM", "JPM", "ORCL", "CRM", "MSTR", "V", "MA", "KO", "DIS", "BA", "NKE", "WMT", "XOM", "CVX", "PFE", "T", "UBER"]);
+const AMEX_LIST = new Set(["SPY", "VOO", "QQQ", "IWM", "DIA", "GLD", "SLV", "ARKK"]);
+export function tvSymbol(key, info = {}) {
+  const [market, symbolRaw] = String(key).split(":");
+  const symbol = String(symbolRaw || "").toUpperCase();
+  if (market === "台股") {
+    const board = info.board || (info.marketKey || "");
+    const otc = /上櫃|OTC|TPEX/.test(board);
+    return `${otc ? "TPEX" : "TWSE"}:${symbol}`;
+  }
+  if (market === "美股") {
+    if (AMEX_LIST.has(symbol)) return `AMEX:${symbol}`;
+    if (NYSE_LIST.has(symbol)) return `NYSE:${symbol}`;
+    return `NASDAQ:${symbol}`;
+  }
+  return null;
+}
+
 /** 讀取排程產生的行情檔；失敗回傳 null */
 export async function loadPricesFile() {
   try {
