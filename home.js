@@ -3,6 +3,7 @@ import { $, esc, fmt, pct, tone, toast, statusBanner, registerAction } from "./u
 import { S, save, holdings, uni } from "./state.js";
 import { keyOf } from "./portfolio.js";
 import { HOT_STOCKS } from "./catalog.js";
+import { homeNewsCard } from "./news.js";
 import { indices, institutions, breadth, industryFlow, daytrade, marketTone } from "./marketdata.js";
 
 const yi = (n) => (n == null || isNaN(n)) ? "—" : fmt(Math.round(n / 1e8), 0) + "億";
@@ -42,7 +43,7 @@ function aiCard() {
     return `<section class="ai-card"><div class="ai-top"><span class="ai-tag mid">資料更新中</span><span class="sp"></span><span class="when">—</span></div>
       <h1 class="ai-title">市場資料尚未更新</h1>
       <p class="ai-body">市場指數與法人資料由 GitHub 排程於盤後更新，稍後會自動補上。</p>
-      <div class="ai-foot">整合指數、新聞與台股事件</div></section>`;
+      <div class="ai-foot">整合指數、法人與類股資金流向</div></section>`;
   }
   const idx = indices().find((i) => i.code === "t00");
   const best = inds.slice().sort((a, c) => (c.totalNet || 0) - (a.totalNet || 0));
@@ -67,7 +68,7 @@ function aiCard() {
     <h1 class="ai-title">${title}</h1>
     <p class="ai-body">${body}</p>
     <div class="ai-chips"><span class="ai-chip">加權指數</span><span class="ai-chip">台指期</span><span class="ai-chip">外資</span></div>
-    <div class="ai-foot"><span>整合指數、新聞與台股事件</span><span class="sp"></span><span style="color:var(--gold)">AI ›</span></div>
+    <div class="ai-foot"><span>整合指數、法人與類股資金流向</span><span class="sp"></span><span style="color:var(--gold)">AI ›</span></div>
   </section>`;
 }
 
@@ -178,6 +179,7 @@ export function viewHome() {
     ${watchCard()}
     ${afterHoursCard()}
     ${hotCard()}
+    ${homeNewsCard()}
     <p class="muted small" style="text-align:center;margin-top:14px;font-size:11px">報價與市場資料來自公開來源（幣安即時／TWSE 盤後），可能有延遲或誤差，僅供參考，不構成投資建議。</p>`;
 }
 

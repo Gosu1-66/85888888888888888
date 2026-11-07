@@ -8,6 +8,7 @@ import { stockLogo, sparkLine } from "./home.js";
 import { industryFlow, instRank, institutions, daytrade, etfMetrics, indices } from "./marketdata.js";
 import { loadBinanceCandles, tvSymbol } from "./quotes.js";
 import { companyDesc } from "./companies.js";
+import { stockNewsCard } from "./news.js";
 
 /* ── K 線週期與指標偏好 ── */
 const PERIOD_KEY = "gu1.stkPeriod";
@@ -163,7 +164,7 @@ export function viewStock() {
 
   const tabs = avail.length > 1 ? `<div class="tabbar">${avail.map((t) => `<button type="button" class="${t === tab ? "on" : ""}" data-act="stock-tab" data-tab="${t}">${t}</button>`).join("")}</div>` : "";
 
-  return `${head}${kline}${tabs}<div id="stk-panel">${panel(u, key, tab, sc, q, chgPct, fund, hasFund)}</div>`;
+  return `${head}${kline}${tabs}<div id="stk-panel">${panel(u, key, tab, sc, q, chgPct, fund, hasFund)}</div>${stockNewsCard(key)}`;
 }
 
 /* ── 各頁籤內容 ── */

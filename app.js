@@ -1,4 +1,5 @@
 // app.js — 入口：路由、渲染、啟動流程、全域事件、頂部列與指數跑馬燈。
+import { loadNews } from "./news.js";
 import { $, registerAction, fireAction, parseRoute, toast } from "./ui.js";
 import { S, save, uni, evaluateAlerts } from "./state.js";
 import { refreshQuotes, loadLogos, loadCryptoLogos } from "./quotes.js";
@@ -179,6 +180,7 @@ export async function refreshAll(silent = false) {
     S.status = r.status;
     S.logos = await loadLogos();
     S.cryptoLogos = await loadCryptoLogos();
+    await loadNews();
     if (r.file) { S.file = r.file; S.fileAt = Date.now(); }
     S.lastRefresh = Date.now();
     evaluateAlerts(r.quotes);
