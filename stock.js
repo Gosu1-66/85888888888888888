@@ -133,6 +133,8 @@ export function viewStock() {
   const periodChips = PERIODS.filter(([p]) => p === "1d" || canIntraday)
     .map(([p, l]) => `<button class="chip2${p === period ? " on" : ""}" data-act="stk-period" data-period="${p}">${l}</button>`).join("");
   const useTv = !isDaily && canIntraday && u.market !== "加密貨幣";
+  // TradingView 有資料的商品（美股／加密貨幣）才給「完整圖表」入口；台股免費嵌入無分時資料，不顯示
+  const canTv = u.market === "美股" || u.market === "加密貨幣";
   const inds = stkInd();
   const indChips = INDS.map(([k, l]) => `<button class="chip2${inds[k] !== false ? " on" : ""}" data-act="stk-ind" data-ind="${k}">${l}</button>`).join("");
   const hasChart = cs.length >= 5 || u.market === "加密貨幣";
@@ -141,6 +143,7 @@ export function viewStock() {
     <div class="chiprow" style="margin:0 0 6px">
       ${periodChips}
       <span style="flex:1"></span>
+      ${canTv ? `<button class="chip2 gold" data-act="stk-full" data-key="${esc(key)}" title="用 TradingView 完整圖表查看">完整圖表 ›</button>` : ""}
       <span class="chip2" style="pointer-events:none" id="stk-bars">${isDaily ? `${cs.length} 根` : ""}</span>
     </div>
     <div class="chiprow" id="stk-range-row" style="margin:0 0 6px${isDaily && !useTv ? "" : ";display:none"}">${rangeChips}</div>
@@ -391,7 +394,7 @@ export function afterStock() {
     loadBinanceCandles(u.symbol, effPeriod, 400).then((rows) => {
       if (seq !== binanceSeq || !mainEl.isConnected || !rows || !rows.length) return;
       const chart = mountCandle(mainEl, subEl, rows, {
-        range: rows.length, mainHeight: narrow ? 250 : 320, subHeight: narrow ? 110 : 132, intraday: true, indicators: ind,
+        range: rows.length, mainHeight: narrow ? 232 : 320, subHeight: narrow ? 138 : 132, intraday: true, indicators: ind,
         onHover: (d, time) => {
           if (!box) return;
           if (!d || !time) { box.innerHTML = ohlcText(rows[rows.length - 1], rows[rows.length - 2]); return; }
@@ -422,8 +425,8 @@ export function afterStock() {
   }
   const chart = mountCandle(mainEl, subEl, cs, {
     range,
-    mainHeight: narrow ? 250 : 320,
-    subHeight: narrow ? 110 : 132,
+    mainHeight: narrow ? 232 : 320,
+    subHeight: narrow ? 138 : 132,
     indicators: ind,
     onHover: (d, time) => {
       if (!box) return;
@@ -457,6 +460,67 @@ registerAction("stk-ind", (el) => {
   el.classList.toggle("on", next[k] !== false);
   if (klineState && klineState.chart) klineState.chart.setIndicators(next);
 });
+
+/* 完整圖表：開 TradingView 進階圖表頁（美股／加密貨幣） */
+registerAction("stk-full", (el) => {
+  const key = el.dataset.key || decodeURIComponent((location.hash.split("/stock/")[1] || "").split("?")[0]);
+  location.hash = "#/tvchart/" + encodeURIComponent(key);
+});
+
+/* ── 完整圖表頁（TradingView Advanced Chart，全螢幕＋可返回） ── */
+export function viewTvChart() {
+  const key = decodeURIComponent((location.hash.split("/tvchart/")[1] || "").split("?")[0]);
+  const u = uni().find((x) => x.key === key) || { key, market: key.split(":")[0] || "", symbol: key.split(":")[1] || "", board: "", name: key.split(":")[1] || "" };
+  const sym = tvSymbol(key, { board: u.board }) || "";
+  return `<section class="tvfull">
+    <div class="tvfull-head">
+      <div style="min-width:0">
+        <div class="nm">${esc(u.name || u.symbol)}</div>
+        <div class="small muted">${esc(sym)} · TradingView 進階圖表（可加畫線工具、切週期）</div>
+      </div>
+      <button type="button" class="btn sm" data-act="go-back">‹ 返回</button>
+    </div>
+    <div id="tvfull" class="tv-host tv-full" data-sym="${esc(sym)}"></div>
+    <p class="small muted" style="margin:8px 2px 0">圖表由 TradingView 提供；手機可雙指縮放，右上角可切換週期與全螢幕。</p>
+  </section>`;
+}
+
+export function afterTvChart() {
+  const el = $("#tvfull");
+  if (!el || !el.dataset.sym) return;
+  el.innerHTML = "";
+  const holder = document.createElement("div");
+  holder.className = "tradingview-widget-container";
+  holder.style.height = "100%";
+  const inner = document.createElement("div");
+  inner.className = "tradingview-widget-container__widget";
+  inner.style.height = "100%";
+  holder.appendChild(inner);
+  el.appendChild(holder);
+  const s = document.createElement("script");
+  s.type = "text/javascript";
+  s.async = true;
+  s.src = "https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js";
+  s.innerHTML = JSON.stringify({
+    autosize: true,
+    symbol: el.dataset.sym,
+    interval: "60",
+    timezone: "Asia/Taipei",
+    theme: "dark",
+    style: "1",
+    locale: "zh_TW",
+    withdateranges: true,
+    hide_side_toolbar: false,
+    allow_symbol_change: false,
+    save_image: true,
+    calendar: false,
+    details: true,
+    hotlist: false,
+    studies: ["Volume@tv-basicstudies", "MASimple@tv-basicstudies", "RSI@tv-basicstudies", "MACD@tv-basicstudies"],
+    support_host: "https://www.tradingview.com",
+  });
+  holder.appendChild(s);
+}
 
 registerAction("stock-tab", (el) => {
   S.stockTab = el.dataset.tab;
